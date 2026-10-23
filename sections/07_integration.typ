@@ -10,15 +10,61 @@ Khi dữ liệu được truyền tải qua kênh mạng theo mô hình PGP (tư
 #v(0.3em)
 #align(center)[
   #figure(
-    diagram(
-      spacing: (0mm, 0mm),
-      node-stroke: 1pt + rgb("#334155"),
-      node-corner-radius: 3pt,
-
-      node((0, 0), align(center)[*Encrypted Session Key*\ #text(size: 8.5pt)[Mã hóa bằng RSA Bob]\ #text(size: 8pt, fill: rgb("#475569"))[(PKESK Packet)]], fill: rgb("#ede9fe"), stroke: 1pt + rgb("#7c3aed"), width: 3.5cm, height: 1.5cm),
-      node((1, 0), align(center)[*Nonce / IV*\ #text(size: 8.5pt)[Giá trị ngẫu nhiên]\ #text(size: 8pt, fill: rgb("#475569"))[(12 bytes AES-GCM)]], fill: rgb("#fef3c7"), stroke: 1pt + rgb("#f59e0b"), width: 3.0cm, height: 1.5cm),
-      node((2, 0), align(center)[*AES Ciphertext*\ #text(size: 8.5pt)[Bản mã dữ liệu lớn]\ #text(size: 8pt, fill: rgb("#475569"))[(SEIPD Packet)]], fill: rgb("#dbeafe"), stroke: 1pt + rgb("#2563eb"), width: 4.0cm, height: 1.5cm),
-      node((3, 0), align(center)[*Auth Tag*\ #text(size: 8.5pt)[Mã kiểm thực MAC]\ #text(size: 8pt, fill: rgb("#475569"))[(16 bytes Integrity)]], fill: rgb("#dcfce7"), stroke: 1pt + rgb("#16a34a"), width: 3.2cm, height: 1.5cm),
+    grid(
+      columns: (1fr, 0.85fr, 1.15fr, 0.95fr),
+      gutter: 6pt,
+      rect(
+        width: 100%,
+        fill: rgb("#ede9fe"),
+        stroke: 1pt + rgb("#7c3aed"),
+        radius: 4pt,
+        inset: 8pt,
+        align(center)[
+          #text(weight: "bold", size: 10pt, fill: rgb("#5b21b6"))[Encrypted Session Key] \
+          #v(0.2em)
+          #text(size: 8.5pt)[Mã hóa RSA Bob] \
+          #text(size: 8pt, fill: rgb("#64748b"))[(Gói PKESK)]
+        ]
+      ),
+      rect(
+        width: 100%,
+        fill: rgb("#fef3c7"),
+        stroke: 1pt + rgb("#f59e0b"),
+        radius: 4pt,
+        inset: 8pt,
+        align(center)[
+          #text(weight: "bold", size: 10pt, fill: rgb("#b45309"))[Nonce / IV] \
+          #v(0.2em)
+          #text(size: 8.5pt)[Giá trị ngẫu nhiên] \
+          #text(size: 8pt, fill: rgb("#64748b"))[(12 bytes AES-GCM)]
+        ]
+      ),
+      rect(
+        width: 100%,
+        fill: rgb("#dbeafe"),
+        stroke: 1pt + rgb("#2563eb"),
+        radius: 4pt,
+        inset: 8pt,
+        align(center)[
+          #text(weight: "bold", size: 10pt, fill: rgb("#1d4ed8"))[AES Ciphertext] \
+          #v(0.2em)
+          #text(size: 8.5pt)[Bản mã dữ liệu lớn] \
+          #text(size: 8pt, fill: rgb("#64748b"))[(Gói SEIPD)]
+        ]
+      ),
+      rect(
+        width: 100%,
+        fill: rgb("#dcfce7"),
+        stroke: 1pt + rgb("#16a34a"),
+        radius: 4pt,
+        inset: 8pt,
+        align(center)[
+          #text(weight: "bold", size: 10pt, fill: rgb("#15803d"))[Auth Tag] \
+          #v(0.2em)
+          #text(size: 8.5pt)[Mã kiểm thực MAC] \
+          #text(size: 8pt, fill: rgb("#64748b"))[(16 bytes Integrity)]
+        ]
+      )
     ),
     caption: [Cấu trúc gói tin dữ liệu hoàn chỉnh truyền qua mạng],
   )

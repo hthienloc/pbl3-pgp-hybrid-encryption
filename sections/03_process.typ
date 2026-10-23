@@ -34,7 +34,7 @@ Quy trình vận hành mã hóa lai giữa phía gửi (Alice) và phía nhận 
 #align(center)[
   #figure(
     diagram(
-      spacing: (28mm, 11mm),
+      spacing: (28mm, 9mm),
       node-stroke: 0.8pt + rgb("#3b82f6"),
       node-fill: rgb("#eff6ff"),
       node-corner-radius: 4pt,
@@ -42,31 +42,35 @@ Quy trình vận hành mã hóa lai giữa phía gửi (Alice) và phía nhận 
 
       // Các thực thể
       node((0, 0), align(center)[*Alice*\ (Người gửi)], name: <alice>, fill: rgb("#dbeafe"), stroke: 1pt + rgb("#2563eb")),
-      node((1, 0), align(center)[*Kênh truyền mạng*\ (Gói tin đóng gói)], name: <channel>, fill: rgb("#f1f5f9"), stroke: 1pt + rgb("#64748b")),
+      node((1, 0), align(center)[*Kênh truyền mạng*\ (Kèm gói tin)], name: <channel>, fill: rgb("#f1f5f9"), stroke: 1pt + rgb("#64748b")),
       node((2, 0), align(center)[*Bob*\ (Người nhận)], name: <bob>, fill: rgb("#ede9fe"), stroke: 1pt + rgb("#7c3aed")),
 
-      // Trục thời gian sống (Lifelines)
-      node((0, 4.5), [], name: <alice_end>, stroke: none, fill: none),
-      node((1, 4.5), [], name: <channel_end>, stroke: none, fill: none),
-      node((2, 4.5), [], name: <bob_end>, stroke: none, fill: none),
+      // Trục thời gian sống (Lifelines) - chia từng đoạn ngắt quãng không đè lên khối
+      edge(<alice>, (0, 0.6), "--", stroke: 0.5pt + rgb("#94a3b8")),
+      edge((0, 1.3), (0, 1.5), "--", stroke: 0.5pt + rgb("#94a3b8")),
+      edge((0, 2.2), (0, 2.4), "--", stroke: 0.5pt + rgb("#94a3b8")),
+      edge((0, 3.1), (0, 4.8), "--", stroke: 0.5pt + rgb("#94a3b8")),
 
-      edge(<alice>, <alice_end>, "--", stroke: 0.5pt + rgb("#94a3b8")),
-      edge(<channel>, <channel_end>, "--", stroke: 0.5pt + rgb("#94a3b8")),
-      edge(<bob>, <bob_end>, "--", stroke: 0.5pt + rgb("#94a3b8")),
+      edge(<channel>, (1, 3.0), "--", stroke: 0.5pt + rgb("#94a3b8")),
+      edge((1, 3.8), (1, 4.8), "--", stroke: 0.5pt + rgb("#94a3b8")),
+
+      edge(<bob>, (2, 3.7), "--", stroke: 0.5pt + rgb("#94a3b8")),
+      edge((2, 4.4), (2, 4.6), "--", stroke: 0.5pt + rgb("#94a3b8")),
+      edge((2, 5.3), (2, 5.5), "--", stroke: 0.5pt + rgb("#94a3b8")),
 
       // Các bước của Alice
-      node((0, 0.9), align(left)[*1. Sinh khóa* $K$\ ngẫu nhiên], name: <a1>, stroke: 0.5pt + rgb("#f59e0b"), fill: rgb("#fef3c7"), shape: rect),
-      node((0, 1.8), align(left)[*2. Mã hóa AES*:\ $C_("data") = "AES"_K (M)$], name: <a2>, stroke: 0.5pt + rgb("#3b82f6"), fill: rgb("#eff6ff"), shape: rect),
-      node((0, 2.7), align(left)[*3. Mã hóa RSA*:\ $C_("key") = "RSA"_(E_B)(K)$], name: <a3>, stroke: 0.5pt + rgb("#7c3aed"), fill: rgb("#f5f3ff"), shape: rect),
+      node((0, 0.95), align(left)[*1. Sinh khóa* $K$\ ngẫu nhiên], name: <a1>, stroke: 0.5pt + rgb("#f59e0b"), fill: rgb("#fef3c7"), shape: rect),
+      node((0, 1.85), align(left)[*2. Mã hóa AES*:\ $C_("data") = "AES"_K (M)$], name: <a2>, stroke: 0.5pt + rgb("#3b82f6"), fill: rgb("#eff6ff"), shape: rect),
+      node((0, 2.75), align(left)[*3. Mã hóa RSA*:\ $C_("key") = "RSA"_(E_B)(K)$], name: <a3>, stroke: 0.5pt + rgb("#7c3aed"), fill: rgb("#f5f3ff"), shape: rect),
 
       // Truyền gói tin qua kênh mạng
-      edge((0, 3.2), (1, 3.2), "-|>", [Gửi gói tin], label-side: left),
-      node((1, 3.2), align(center)[*Gói tin:*\ {$C_("key"), "IV", C_("data"), "Tag"$\}], name: <pkg>, stroke: 0.8pt + rgb("#16a34a"), fill: rgb("#dcfce7"), shape: rect),
-      edge((1, 3.2), (2, 3.2), "-|>", [Tiếp nhận], label-side: left),
+      edge((0, 3.4), (1, 3.4), "-|>", [Gửi gói tin], label-pos: 0.35, label-side: left),
+      node((1, 3.4), align(center)[*Gói tin PGP:*\ {$C_("key"), "IV", C_("data"), "Tag"$\}], name: <pkg>, stroke: 0.8pt + rgb("#16a34a"), fill: rgb("#dcfce7"), shape: rect),
+      edge((1, 3.4), (2, 3.4), "-|>", [Tiếp nhận], label-pos: 0.65, label-side: left),
 
       // Các bước của Bob
-      node((2, 3.7), align(left)[*4. Giải mã RSA*:\ $K = "RSA"_(D_B)(C_("key"))$], name: <b1>, stroke: 0.5pt + rgb("#7c3aed"), fill: rgb("#f5f3ff"), shape: rect),
-      node((2, 4.5), align(left)[*5. Giải mã AES & Xác thực Tag*:\ $M = "AES"_K (C_("data"))$], name: <b2>, stroke: 0.5pt + rgb("#16a34a"), fill: rgb("#dcfce7"), shape: rect),
+      node((2, 4.05), align(left)[*4. Giải mã RSA*:\ $K = "RSA"_(D_B)(C_("key"))$], name: <b1>, stroke: 0.5pt + rgb("#7c3aed"), fill: rgb("#f5f3ff"), shape: rect),
+      node((2, 4.95), align(left)[*5. Giải mã AES & Xác thực*:\ $M = "AES"_K (C_("data"))$], name: <b2>, stroke: 0.5pt + rgb("#16a34a"), fill: rgb("#dcfce7"), shape: rect),
     ),
     caption: [Sơ đồ tuần tự quy trình truyền thông mã hóa lai PGP giữa Alice và Bob],
   )
