@@ -23,3 +23,6 @@
 #include "sections/08_testing.typ"
 #include "sections/09_conclusion.typ"
 #include "sections/10_qa.typ"
+
+#pagebreak()
+#bibliography("references.bib", title: [TÀI LIỆU THAM KHẢO], style: "ieee")
