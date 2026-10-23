@@ -1,6 +1,6 @@
 = Demo chương trình và kết quả kiểm thử
 
-Để đánh giá toàn diện tính đúng đắn, khả năng chống can thiệp và xử lý lỗi của chương trình Python, nhóm đã thiết lập 3 kịch bản kiểm thử trọng tâm:
+Để đánh giá toàn diện tính đúng đắn, khả năng chống can thiệp và xử lý lỗi của chương trình Python (`src/hybrid_demo.py`), nhóm đã thiết lập 3 kịch bản kiểm thử trọng tâm:
 
 #align(center)[
   #table(
@@ -9,13 +9,48 @@
     stroke: 0.5pt + rgb("#cbd5e1"),
     inset: 8pt,
     [*Kiểm thử*], [*Kịch bản thử nghiệm*], [*Kết quả quan sát & Phân tích*],
-    [*Test 01*], [Bob sử dụng đúng Private Key tương ứng với Public Key của mình.], [Khôi phục thành công 100% nội dung thông điệp gốc ban đầu. Quy trình giải mã khóa phiên và giải mã dữ liệu diễn ra chính xác.],
-    [*Test 02*], [Kẻ tấn công (Man-in-the-Middle) can thiệp, sửa đổi một phần bản mã trước khi Bob giải mã.], [Phát hiện can thiệp: Chương trình cảnh báo lỗi xác thực tính toàn vẹn (Authentication Tag không khớp) trong chế độ AES-GCM.],
-    [*Test 03*], [Giải mã bằng một Private Key không khớp (khóa của người khác hoặc khóa sai số học).], [Thất bại: Phép tính RSA cho ra giá trị Session Key sai lệch, quá trình giải mã AES bị từ chối hoặc ném ngoại lệ.]
+    [*Test 01*], [Bob sử dụng đúng Private Key tương ứng với Public Key của mình.], [Khôi phục thành công 100% nội dung thông điệp gốc ban đầu. Khóa phiên và dữ liệu được giải mã chính xác.],
+    [*Test 02*], [Kẻ tấn công (Man-in-the-Middle) can thiệp, đảo 1 bit trong Ciphertext trước khi Bob giải mã.], [Phát hiện can thiệp: Thư viện bắt lỗi ngoại lệ `ValueError: MAC check failed`. Bản tin bị hủy bỏ ngay lập tức.],
+    [*Test 03*], [Giải mã bằng một Private Key không khớp (khóa của bên thứ ba Eve).], [Thất bại: Phép tính RSA cho ra giá trị Session Key sai lệch, dẫn tới giải mã AES thất bại và ném ngoại lệ.]
   )
 ]
 
-== Minh chứng thực nghiệm
-- Khi báo cáo, chạy trực tiếp cả 3 kịch bản kiểm thử trong terminal Python.
-- Trình chiếu nhật ký log chi tiết từng bước: từ bản rõ ban đầu, bản mã sinh ra, dạng biểu diễn nhị phân/hex của khóa phiên, đến kết quả bắt ngoại lệ khi dữ liệu bị sửa đổi.
-- Lưu ý không kết luận rằng mọi chế độ AES đều tự động phát hiện được sửa đổi; cần chỉ rõ cơ chế xác thực toàn vẹn chỉ có khi sử dụng chế độ Authenticated Encryption (như AES-GCM) hoặc gắn kèm HMAC (đối với AES-CBC).
+== Minh chứng thực nghiệm (Terminal Execution Log)
+
+Dưới đây là nhật ký xuất trực tiếp từ terminal khi thực thi chương trình `python3 src/hybrid_demo.py`:
+
+```text
+=================================================================
+DEMO PGP HYBRID ENCRYPTION (RSA + AES-GCM)
+=================================================================
+
+[ALICE] Thông điệp gốc: "Báo cáo tiến độ Nhóm 7: PGP Hybrid Encryption hoạt động chính xác!"
+[ALICE] Mã hóa hoàn tất:
+  + Encrypted Session Key (RSA) : 2843
+  + Nonce (AES-GCM)              : 48241c998fc06ff8e676cbb77d3ba152
+  + Ciphertext (AES)            : e33b37b786e44a47b86fd935c285367ae60ccea3... (81 bytes)
+  + Authentication Tag          : f36635e20b731180628dcfd7aaceab49
+
+-----------------------------------------------------------------
+TEST CASE 01: Bob dùng đúng Private Key của mình
+[BOB] Giải mã thành công: "Báo cáo tiến độ Nhóm 7: PGP Hybrid Encryption hoạt động chính xác!"
+>>> KẾT QUẢ: [PASSED] Khôi phục chính xác 100% dữ liệu.
+
+-----------------------------------------------------------------
+TEST CASE 02: Kẻ tấn công sửa đổi 1 byte trong Ciphertext
+[BOB] CẢNH BÁO AN TOÀN: Phát hiện dữ liệu bị can thiệp!
+      Chi tiết ngoại lệ: MAC check failed (Authentication Tag không khớp)
+>>> KẾT QUẢ: [PASSED] Chặn thành công tấn công sửa đổi bản mã.
+
+-----------------------------------------------------------------
+TEST CASE 03: Giải mã bằng Private Key không hợp lệ (Khóa của Eve)
+[EVE] Thất bại: Không giải mã được Session Key và bản mã.
+      Chi tiết ngoại lệ: MAC check failed (Sai Session Key dẫn đến xác thực thất bại)
+>>> KẾT QUẢ: [PASSED] Từ chối truy cập trái phép khi sai khóa.
+=================================================================
+```
+
+#import "../components.typ": info-box
+#info-box(title: "Nhận xét kết quả kiểm thử")[
+  Ba tình huống kiểm thử trên chứng minh rằng mô hình kết hợp RSA và AES-GCM không chỉ bảo vệ tính bí mật tuyệt đối của nội dung thông điệp trên đường truyền mà còn chủ động phát hiện mọi nỗ lực giả mạo, can thiệp hoặc thay đổi dữ liệu trái phép.
+]
