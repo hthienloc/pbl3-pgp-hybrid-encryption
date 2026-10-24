@@ -145,5 +145,17 @@
 
   pagebreak()
 
+  // Định dạng bảng toàn cục: Tiêu đề canh giữa, nội dung canh lề trái
+  show table.cell: it => {
+    if it.y == 0 {
+      set text(weight: "bold")
+      set align(center + horizon)
+      it
+    } else {
+      set align(left + horizon)
+      it
+    }
+  }
+
   body
 }

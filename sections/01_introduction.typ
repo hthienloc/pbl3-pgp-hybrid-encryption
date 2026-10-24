@@ -31,7 +31,7 @@ Chuẩn OpenPGP (@rfc4880, @rfc9580) giải quyết sự đánh đổi này bằ
       node((3, 1.8), align(center)[*Khóa phiên mã hóa*\ ($C_("key")$)], name: <ckey>, fill: rgb("#dcfce7"), stroke: 0.8pt + rgb("#16a34a")),
 
       edge(<msg>, <aes>, "-|>"),
-      edge(<key>, (0.9, 1.8), (0.9, 0.4), <aes>, "-|>", [Dùng $K$], label-pos: 0.7, label-side: right),
+      edge(<key>, (0.7, 1.8), (0.7, 0.4), <aes>, "-|>", [Dùng $K$], label-pos: 0.5, label-side: left),
       edge(<key>, <rsa>, "-|>", [Bảo vệ $K$], label-pos: 0.5, label-side: right),
       edge(<pub>, <rsa>, "-|>"),
       edge(<aes>, <cdata>, "-|>"),
