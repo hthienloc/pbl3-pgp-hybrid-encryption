@@ -160,5 +160,29 @@
     }
   }
 
+  // Định dạng khối code (raw block): Background màu nền nhạt, viền phân cách, padding và bo góc
+  show raw.where(block: true): it => {
+    set text(size: 8.5pt, font: ("DejaVu Sans Mono", "Liberation Mono"))
+    rect(
+      width: 100%,
+      fill: rgb("#f8fafc"),
+      stroke: 0.5pt + rgb("#e2e8f0"),
+      inset: (x: 10pt, y: 9pt),
+      radius: 4pt,
+      it
+    )
+  }
+
+  // Định dạng inline code
+  show raw.where(block: false): it => {
+    box(
+      fill: rgb("#f1f5f9"),
+      inset: (x: 3.5pt, y: 1.5pt),
+      baseline: 0%,
+      radius: 3pt,
+      text(size: 9pt, font: ("DejaVu Sans Mono", "Liberation Mono"), fill: rgb("#0f172a"))[#it]
+    )
+  }
+
   body
 }

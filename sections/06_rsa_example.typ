@@ -1,56 +1,60 @@
-#import "@preview/fletcher:0.5.6" as fletcher: diagram, node, edge
+#import "../styles.typ": report-table
+#import "../figures.typ": fig-rsa-numeric-example
 
-= Ví dụ RSA – Mã hóa và giải mã
+= Ví dụ số học RSA – Tạo khóa, mã hóa và giải mã
 
-Để kiểm chứng tính đúng đắn của giải thuật toán học đã lập trình, nhóm thực hiện chạy thử nghiệm quy trình với bộ tham số:
-- Cặp khóa công khai / bí mật: $e = 17$, $d = 2753$, $n = 3233$.
-- Thông điệp dạng số cần mã hóa: $M = 125$.
+Để minh họa nguyên lý toán học của hệ mật mã RSA, phần này thực nghiệm tính toán trên không gian số nhỏ có thể kiểm tra từng bước bằng tay.
+
+== Khởi tạo hệ thống và tính toán khóa
+
+1. *Chọn hai số nguyên tố nhỏ:*
+   $ p = 61, quad q = 53 $
+2. *Tính Modulus hệ thống $n$:*
+   $ n = p times q = 61 times 53 = 3233 $
+3. *Tính giá trị hàm Euler $phi(n)$:*
+   $ phi(n) = (p - 1)(q - 1) = 60 times 52 = 3120 $
+4. *Chọn số mũ công khai $e$:*
+   Chọn $e = 17$ thỏa mãn $1 < e < 3120$ và $gcd(17, 3120) = 1$.
+5. *Tính số mũ bí mật $d$ bằng thuật toán Euclid mở rộng:*
+   Tìm $d$ sao cho $17 times d equiv 1 mod 3120$:
+   $ 17 times 2753 = 46801 = 15 times 3120 + 1 => d = 2753 $
 
 #align(center)[
-  #table(
-    columns: (1fr, 1.8fr, 1fr),
-    fill: (x, y) => if y == 0 { rgb("#e0e7ff") } else if calc.even(y) { rgb("#f8fafc") } else { none },
-    stroke: 0.5pt + rgb("#cbd5e1"),
-    inset: 9pt,
-    [*Giai đoạn*], [*Công thức toán học*], [*Kết quả*],
-    [Thông điệp gốc], [Giá trị ban đầu $M$], [$125$],
-    [Mã hóa bằng Public Key], [$C = M^e mod n = 125^(17) mod 3233$], [$1516$],
-    [Giải mã bằng Private Key], [$M' = C^d mod n = 1516^(2753) mod 3233$], [$125$]
+  #report-table(
+    columns: (1.2fr, 1.2fr, 2fr),
+    headers: ("Loại khóa", "Thành phần", "Giá trị số học"),
+    rows: (
+      ([Public Key], [$(e, n)$], [$(17, 3233)$]),
+      ([Private Key], [$(d, n)$], [$(2753, 3233)$]),
+    )
   )
 ]
 
-== Chuỗi chuyển đổi dữ liệu
+== Thực nghiệm mã hóa và giải mã
+
+Giả sử Alice muốn truyền thông điệp số $M = 125$ ($M < n$) cho Bob:
+- *Mã hóa (Alice thực hiện):*
+  $ C = M^e mod n = 125^17 mod 3233 = 1516 $
+- *Giải mã (Bob thực hiện):*
+  $ M' = C^d mod n = 1516^2753 mod 3233 = 125 $
+
+#align(center)[
+  #report-table(
+    columns: (1fr, 1.2fr, 1.8fr),
+    headers: ("Giai đoạn", "Công thức", "Kết quả tính toán"),
+    rows: (
+      ([Bản rõ gốc], [$M$], [$125$]),
+      ([Bản mã], [$C = M^e mod n$], [$1516$]),
+      ([Bản giải mã], [$M' = C^d mod n$], [$125$ ($= M$)]),
+    )
+  )
+]
+
+== Chuỗi chuyển đổi dữ liệu và khóa
 
 #v(0.3em)
 #align(center)[
-  #figure(
-    diagram(
-      spacing: (18mm, 10mm),
-      node-stroke: 0.8pt + black,
-      node-fill: none,
-      node-corner-radius: 4pt,
-      edge-stroke: 0.8pt + black,
-
-      // Hàng 1: Mã hóa
-      node((0, 0), align(center)[*Bản rõ*\ $M = 125$], name: <m>, stroke: 0.8pt + black),
-      node((1.2, 0), align(center)[*Mã hóa RSA*\ $C = M^e mod n$], name: <enc>, stroke: 1.3pt + black),
-      node((1.2, -0.9), align(center)[*Khóa công khai*\ $(e=17, n=3233)$], name: <pub>, stroke: (paint: black, thickness: 0.8pt, dash: "dash-dotted")),
-      node((2.4, 0), align(center)[*Bản mã*\ $C = 1516$], name: <c>, stroke: 1.5pt + black),
-
-      // Hàng 2: Giải mã
-      node((2.4, 1.3), align(center)[*Giải mã RSA*\ $M' = C^d mod n$], name: <dec>, stroke: 1.3pt + black),
-      node((3.6, 1.3), align(center)[*Khóa bí mật*\ $(d=2753, n=3233)$], name: <priv>, stroke: (paint: black, thickness: 0.8pt, dash: "dashed")),
-      node((1.2, 1.3), align(center)[*Khôi phục*\ $M' = 125$], name: <m2>, stroke: 0.8pt + black),
-
-      edge(<m>, <enc>, "-|>"),
-      edge(<pub>, <enc>, "-|>"),
-      edge(<enc>, <c>, "-|>"),
-      edge(<c>, <dec>, "-|>"),
-      edge(<priv>, <dec>, "-|>"),
-      edge(<dec>, <m2>, "-|>"),
-    ),
-    caption: [Sơ đồ chu trình xử lý dữ liệu và khóa trong thuật toán RSA số học],
-  )
+  #fig-rsa-numeric-example
 ]
 #v(0.3em)
 

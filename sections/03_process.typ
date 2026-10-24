@@ -1,76 +1,35 @@
-#import "@preview/fletcher:0.5.6" as fletcher: diagram, node, edge
+#import "../styles.typ": report-table
+#import "../figures.typ": fig-sequence-interaction
 
 = Quy trình Hybrid Encryption
 
-Quy trình truyền tin an toàn giữa Alice (gửi) và Bob (nhận) gồm các bước sau:
-
 #align(center)[
-  #table(
+  #report-table(
     columns: (1fr, 1fr),
-    fill: (x, y) => if y == 0 { rgb("#dbeafe") } else { none },
-    stroke: 0.5pt + rgb("#bfdbfe"),
-    inset: 9pt,
-    [*Phía Alice (Mã hóa)*], [*Phía Bob (Giải mã)*],
-    [
-      + Sinh Session Key ngẫu nhiên ($K$).
-      + Dùng AES mã hóa dữ liệu: $C_("data") = "AES"_K (M)$.
-      + Dùng Public Key Bob mã hóa $K$: $C_("key") = "RSA"_(E_B)(K)$.
-      + Ghép gói tin và gửi cho Bob.
-    ],
-    [
-      + Nhận gói tin từ Alice qua mạng.
-      + Dùng Private Key Bob giải mã lấy lại: $K = "RSA"_(D_B)(C_("key"))$.
-      + Dùng $K$ giải mã dữ liệu: $M = "AES"_K (C_("data"))$.
-      + Kiểm tra tính toàn vẹn qua Authentication Tag.
-    ]
+    headers: ("Phía Alice (Mã hóa)", "Phía Bob (Giải mã)"),
+    rows: (
+      (
+        [
+          + Nhận Public Key $(e_B, n)$ của Bob từ kênh công khai.
+          + Sinh Session Key ngẫu nhiên ($K$).
+          + Dùng AES mã hóa: $C_("data") = "AES"_K (M)$.
+          + Dùng Public Key Bob: $C_("key") = "RSA"_(e_B)(K)$.
+          + Ghép gói tin và gửi qua mạng.
+        ],
+        [
+          + *Khởi tạo:* Bob sinh cặp khóa RSA $(e_B, n)$ & $(d_B, n)$, công khai $(e_B, n)$.
+          + Nhận gói tin từ Alice.
+          + Dùng Private Key: $K = "RSA"_(d_B)(C_("key"))$.
+          + Dùng $K$ giải mã: $M = "AES"_K (C_("data"))$.
+          + Kiểm tra tính toàn vẹn qua Auth Tag.
+        ]
+      ),
+    )
   )
 ]
 
 == Sơ đồ tuần tự tương tác
 
-#v(0.3em)
 #align(center)[
-  #figure(
-    diagram(
-      spacing: (28mm, 9mm),
-      node-stroke: 0.8pt + black,
-      node-fill: none,
-      node-corner-radius: 4pt,
-      edge-stroke: 0.8pt + black,
-
-      // Thực thể: Viền đậm 1.3pt
-      node((0, 0), align(center)[*Alice*\ (Người gửi)], name: <alice>, fill: none, stroke: 1.3pt + black),
-      node((1, 0), align(center)[*Kênh mạng*\ (Gói tin)], name: <channel>, fill: none, stroke: 0.8pt + black),
-      node((2, 0), align(center)[*Bob*\ (Người nhận)], name: <bob>, fill: none, stroke: 1.3pt + black),
-
-      edge(<alice>, (0, 0.6), "--", stroke: 0.5pt + black),
-      edge((0, 1.3), (0, 1.5), "--", stroke: 0.5pt + black),
-      edge((0, 2.2), (0, 2.4), "--", stroke: 0.5pt + black),
-      edge((0, 3.1), (0, 4.8), "--", stroke: 0.5pt + black),
-
-      edge(<channel>, (1, 3.0), "--", stroke: 0.5pt + black),
-      edge((1, 3.8), (1, 4.8), "--", stroke: 0.5pt + black),
-
-      edge(<bob>, (2, 3.7), "--", stroke: 0.5pt + black),
-      edge((2, 4.4), (2, 4.6), "--", stroke: 0.5pt + black),
-      edge((2, 5.3), (2, 5.5), "--", stroke: 0.5pt + black),
-
-      // Sinh khóa: Nét đứt (dashed)
-      node((0, 0.95), align(left)[*1. Sinh khóa* $K$\ ngẫu nhiên], name: <a1>, stroke: (paint: black, thickness: 0.8pt, dash: "dashed"), fill: none, shape: rect),
-      // Xử lý mã hóa: Nét liền (solid)
-      node((0, 1.85), align(left)[*2. Mã hóa AES*:\ $C_("data") = "AES"_K (M)$], name: <a2>, stroke: 0.8pt + black, fill: none, shape: rect),
-      node((0, 2.75), align(left)[*3. Mã hóa RSA*:\ $C_("key") = "RSA"_(E_B)(K)$], name: <a3>, stroke: 0.8pt + black, fill: none, shape: rect),
-
-      edge((0, 3.4), (1, 3.4), "-|>", [Gửi gói tin], label-pos: 0.35, label-side: left),
-      // Gói dữ liệu truyền tải trên mạng: Viền đậm 1.5pt
-      node((1, 3.4), align(center)[*Gói tin PGP:*\ {$C_("key"), "IV", C_("data"), "Tag"$}], name: <pkg>, stroke: 1.5pt + black, fill: none, shape: rect),
-      edge((1, 3.4), (2, 3.4), "-|>", [Tiếp nhận], label-pos: 0.65, label-side: left),
-
-      // Giải mã: Nét liền (solid)
-      node((2, 4.05), align(left)[*4. Giải mã RSA*:\ $K = "RSA"_(D_B)(C_("key"))$], name: <b1>, stroke: 0.8pt + black, fill: none, shape: rect),
-      // Xác thực: Nét chấm gạch (dash-dotted)
-      node((2, 4.95), align(left)[*5. Giải mã AES & Xác thực*:\ $M = "AES"_K (C_("data"))$], name: <b2>, stroke: (paint: black, thickness: 0.8pt, dash: "dash-dotted"), fill: none, shape: rect),
-    ),
-    caption: [Sơ đồ tuần tự quy trình truyền thông mã hóa lai PGP giữa Alice và Bob],
-  )
+  #fig-sequence-interaction
 ]

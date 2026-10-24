@@ -1,3 +1,5 @@
+#import "../styles.typ": report-table
+
 = Cài đặt RSA bằng Python
 
 Thuật toán RSA được tổ chức thành các mô-đun độc lập trong thư mục `algorithms/` nhằm phục vụ việc kiểm thử từng thành phần:
@@ -5,16 +7,15 @@ Thuật toán RSA được tổ chức thành các mô-đun độc lập trong t
 == Bảng đặc tả các hàm chính
 
 #align(center)[
-  #table(
+  #report-table(
     columns: (1.2fr, 2fr),
-    fill: (x, y) => if y == 0 { rgb("#e0e7ff") } else if calc.even(y) { rgb("#f8fafc") } else { none },
-    stroke: 0.5pt + rgb("#cbd5e1"),
-    inset: 8pt,
-    [*Tên hàm*], [*Mô tả chức năng & Giải thuật*],
-    [`extended_gcd(a, b)`], [Cài đặt giải thuật Euclid mở rộng: đệ quy tìm ước chung lớn nhất và các hệ số Bézout $x, y$ sao cho $a x + b y = gcd(a, b)$. Dùng để tính số mũ bí mật $d$.],
-    [`generate_rsa_keys(p, q)`], [Giai đoạn sinh khóa: Tính $n = p times q$, $phi = (p-1)(q-1)$, chọn $e = 17$, tính $d$ qua `mod_inverse(e, phi)`, trả về cặp `((e, n), (d, n))`.],
-    [`rsa_encrypt(pub_key, M)`], [Giai đoạn mã hóa: Áp dụng công thức $C = M^e mod n$ sử dụng hàm lũy thừa modulo tối ưu `pow(M, e, n)`.],
-    [`rsa_decrypt(priv_key, C)`], [Giai đoạn giải mã: Áp dụng công thức $M = C^d mod n$ thông qua `pow(C, d, n)`.]
+    headers: ("Tên hàm", "Mô tả chức năng & Giải thuật"),
+    rows: (
+      ([`extended_gcd(a, b)`], [Cài đặt giải thuật Euclid mở rộng: đệ quy tìm ước chung lớn nhất và các hệ số Bézout $x, y$ sao cho $a x + b y = gcd(a, b)$. Dùng để tính số mũ bí mật $d$.]),
+      ([`generate_rsa_keys(p, q)`], [Giai đoạn sinh khóa: Tính $n = p times q$, $phi = (p-1)(q-1)$, chọn $e = 17$, tính $d$ qua `mod_inverse(e, phi)`, trả về cặp `((e, n), (d, n))`.]),
+      ([`rsa_encrypt(pub_key, M)`], [Giai đoạn mã hóa: Áp dụng công thức $C = M^e mod n$ sử dụng hàm lũy thừa modulo tối ưu `pow(M, e, n)`.]),
+      ([`rsa_decrypt(priv_key, C)`], [Giai đoạn giải mã: Áp dụng công thức $M = C^d mod n$ thông qua `pow(C, d, n)`.])
+    )
   )
 ]
 
