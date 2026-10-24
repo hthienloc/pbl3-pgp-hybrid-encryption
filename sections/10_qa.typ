@@ -34,21 +34,21 @@
 )
 
 #qa-card(
-  "Khóa phiên (Session Key) là gì và được tạo ra ở đâu?",
+  "Khóa phiên được tạo ra ở đâu và có vai trò gì?",
   [
-    Khóa phiên là một khóa đối xứng ngẫu nhiên (độ dài 128 hoặc 256 bit), được sinh ra ngẫu nhiên tại *phía người gửi (Alice)* ngay trước khi thực hiện mã hóa thông điệp, chỉ có giá trị sử dụng một lần duy nhất cho phiên truyền thông đó.
+    Khóa phiên (Session Key) là một khóa đối xứng ngẫu nhiên (độ dài 128 hoặc 256 bit), được sinh ra tại *phía người gửi (Alice)* ngay trước khi thực hiện mã hóa thông điệp, chỉ sử dụng một lần duy nhất cho phiên truyền thông đó.
   ]
 )
 
 #qa-card(
   "Cơ chế nào phát hiện bản mã bị kẻ tấn công sửa đổi trên đường truyền?",
   [
-    Khi sử dụng chế độ mã hóa xác thực *AES-GCM*, thuật toán tự động sinh ra giá trị *Authentication Tag* (MAC). Nếu bất kỳ bit nào của bản mã bị thay đổi trên đường truyền, giá trị tag tính toán lại ở phía nhận sẽ không khớp, Bob sẽ lập tức phát hiện và hủy bỏ gói tin.
+    Khi sử dụng chế độ mã hóa xác thực *AES-GCM*, thuật toán tự động sinh ra mã xác thực thông điệp *Authentication Tag* (MAC). Nếu bất kỳ bit nào của bản mã bị thay đổi trên đường truyền, giá trị tag tính toán lại ở phía nhận sẽ không khớp, Bob sẽ lập tức phát hiện và hủy bỏ gói tin.
   ]
 )
 
 #qa-card(
-  "Vì sao mã RSA tự viết với p = 61, q = 53 không thể ứng dụng trong bảo mật thực tế?",
+  "Vì sao tham số RSA thử nghiệm với p = 61, q = 53 không thể ứng dụng trong thực tế?",
   [
     Vì $n = 3233$ quá nhỏ, bất kỳ máy tính nào cũng có thể phân tích thành $61 times 53$ trong thời gian tính bằng microsecond, từ đó kẻ tấn công dễ dàng tính ra $phi(n) = 3120$ và tìm được khóa bí mật $d$. Trong thực tế, $p, q$ phải có độ dài tối thiểu 1024-bit hoặc 2048-bit trở lên.
   ]

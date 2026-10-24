@@ -21,6 +21,6 @@ Mã hóa lai giải quyết bài toán dung hòa giữa tốc độ xử lý và
 - RSA chịu trách nhiệm mã hóa duy nhất khóa $K$ bằng Public Key của Bob ($E_B$).
 
 Công thức đóng gói dữ liệu của PGP:
-$ "Gói tin PGP" = { "RSA"_(E_B)(K), quad "AES"_K ("Plaintext") } $
+$ "PGP Packet" = { "RSA"_(E_B)(K), quad "AES"_K (M) } $
 
 *Kết luận:* AES bảo vệ dữ liệu, RSA bảo vệ khóa phiên.

@@ -10,12 +10,12 @@
     inset: 8pt,
     [*Kiểm thử*], [*Kịch bản thử nghiệm*], [*Kết quả quan sát & Phân tích*],
     [*Test 01*], [Bob sử dụng đúng Private Key tương ứng với Public Key của mình.], [Khôi phục thành công 100% nội dung thông điệp gốc ban đầu. Khóa phiên và dữ liệu được giải mã chính xác.],
-    [*Test 02*], [Kẻ tấn công (Man-in-the-Middle) can thiệp, đảo 1 bit trong Ciphertext trước khi Bob giải mã.], [Phát hiện can thiệp: Thư viện bắt lỗi ngoại lệ `ValueError: MAC check failed`. Bản tin bị hủy bỏ ngay lập tức.],
+    [*Test 02*], [Kẻ tấn công xen vào giữa (Man-in-the-Middle) can thiệp, đảo 1 bit trong Ciphertext trước khi Bob giải mã.], [Phát hiện can thiệp: Thư viện bắt lỗi ngoại lệ `ValueError: MAC check failed`. Bản tin bị hủy bỏ ngay lập tức.],
     [*Test 03*], [Giải mã bằng một Private Key không khớp (khóa của bên thứ ba Eve).], [Thất bại: Phép tính RSA cho ra giá trị Session Key sai lệch, dẫn tới giải mã AES thất bại và ném ngoại lệ.]
   )
 ]
 
-== Minh chứng thực nghiệm (Terminal Execution Log)
+== Minh chứng thực nghiệm trên terminal
 
 Dưới đây là nhật ký xuất trực tiếp từ terminal khi thực thi chương trình `python3 src/hybrid_demo.py`:
 
@@ -52,5 +52,5 @@ TEST CASE 03: Giải mã bằng Private Key không hợp lệ (Khóa của Eve)
 
 #import "../components.typ": info-box
 #info-box(title: "Nhận xét kết quả kiểm thử")[
-  Ba tình huống kiểm thử trên chứng minh rằng mô hình kết hợp RSA và AES-GCM không chỉ bảo vệ tính bí mật tuyệt đối của nội dung thông điệp trên đường truyền mà còn chủ động phát hiện mọi nỗ lực giả mạo, can thiệp hoặc thay đổi dữ liệu trái phép.
+  Ba tình huống kiểm thử trên cho thấy mô hình kết hợp RSA và AES-GCM đáp ứng tính bí mật của nội dung thông điệp trên đường truyền, đồng thời phát hiện được các can thiệp làm sai lệch dữ liệu.
 ]

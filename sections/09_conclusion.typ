@@ -19,14 +19,14 @@ Dưới đây là tổng hợp tiến độ nghiên cứu của nhóm cùng lộ
     ],
     [
       - Rà soát, làm sạch và tối ưu hóa mã nguồn toàn bộ hệ thống tích hợp.
-      - Mở rộng chức năng tạo chữ ký số (Digital Signature) bằng RSA và hàm băm SHA-256 để đảm bảo tính chống chối bỏ.
+      - Mở rộng chức năng tạo chữ ký số bằng RSA và hàm băm SHA-256 để đảm bảo tính chống chối bỏ.
       - Kiểm thử hệ thống với dữ liệu thực tế lớn (tệp tin văn bản, ảnh, nhị phân).
       - Đo đạc thời gian thực thi (độ trễ và thông lượng) giữa mã hóa thuần RSA so với Hybrid Encryption.
     ]
   )
 ]
 
-== Lộ trình kế hoạch triển khai giai đoạn tới (Roadmap)
+== Kế hoạch triển khai giai đoạn tới
 
 #align(center)[
   #table(

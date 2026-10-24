@@ -77,7 +77,7 @@
             #v(0.2em)
             #for item in author-str.split("\n") [
               #if not item.contains("Sinh viên") [
-                #text(size: 10.5pt)[#item] \
+                #text(size: 11pt)[#item] \
               ]
             ]
           ]
@@ -144,6 +144,9 @@
   )
 
   pagebreak()
+
+  // Định dạng trích dẫn theo dạng chỉ số trên (superscript) thanh thoát
+  show cite: it => text(fill: heading-color, weight: "bold")[#super(it)]
 
   // Định dạng bảng toàn cục: Tiêu đề canh giữa, nội dung canh lề trái
   show table.cell: it => {
