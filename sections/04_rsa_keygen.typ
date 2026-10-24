@@ -32,6 +32,19 @@ $ d = -367 mod 3120 = 3120 - 367 = 2753 $
 
 *Cặp khóa thu được:* Public Key $(e=17, n=3233)$ và Private Key $(d=2753, n=3233)$.
 
+== Chứng minh tính đúng đắn của RSA qua Định lý Euler
+
+Thuật toán giải mã RSA khôi phục chính xác thông điệp gốc dựa trên cơ sở lý thuyết số học sau:
+1. *Điều kiện biên không gian bản rõ:* Giá trị số học của thông điệp phải thỏa mãn $M in ZZ_n$ ($0 <= M < n$).
+2. *Quan hệ giữa cặp khóa:* Do $e d equiv 1 mod phi(n)$, tồn tại số nguyên $k >= 1$ sao cho:
+$ e d = 1 + k phi(n) = 1 + k (p - 1)(q - 1) $
+3. *Áp dụng Định lý Euler:* Với mọi $M$ nguyên tố cùng nhau với $n$ ($gcd(M, n) = 1$):
+$ M^(phi(n)) equiv 1 mod n $
+4. *Biến đổi giải mã:*
+$ M' = C^d mod n = (M^e)^d mod n = M^(e d) mod n = M^(1 + k phi(n)) mod n $
+$ M' = M times (M^(phi(n)))^k mod n equiv M times 1^k mod n equiv M mod n $
+Do $0 <= M < n$, giá trị thu được sau giải mã $M'$ đồng nhất hoàn toàn với bản rõ ban đầu $M$.
+
 #import "../components.typ": info-box
 #info-box(title: "Khuyến nghị tiêu chuẩn")[
   Mô hình trên là Textbook RSA. Tiêu chuẩn RFC 8017 @rfc8017 yêu cầu kích thước khóa tối thiểu 2048-bit và bắt buộc kết hợp cơ chế đệm an toàn (RSA-OAEP) để chống các kỹ thuật tấn công chọn bản mã.

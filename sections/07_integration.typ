@@ -79,6 +79,22 @@ Khi truyền tải qua mạng, dòng dữ liệu PGP được cấu trúc thành
 ]
 #v(0.3em)
 
+== Cơ sở toán học của AES-GCM (AEAD)
+
+Chế độ AES-GCM kết hợp hai nền tảng số học để đạt được tính bảo mật và toàn vẹn song song:
+
+1. *Mã hóa dòng CTR Mode:* Các khối bản rõ $P_i$ được mã hóa qua phép XOR với chuỗi khóa giả ngẫu nhiên sinh bởi thuật toán AES:
+$ C_i = P_i xor "AES"_K ("CB"_i) $
+với $"CB"_i$ là giá trị Counter Block tính từ Nonce (12 bytes) nối với bộ đếm 32-bit tăng dần.
+
+2. *Xác thực toàn vẹn bằng hàm băm GHASH:* Giá trị kiểm thực Authentication Tag được tính trên trường hữu hạn Galois $FF_(2^(128))$ dựa trên đa thức bất khả quy:
+$ f(x) = x^(128) + x^7 + x^2 + x + 1 $
+Khóa băm xác thực $H = "AES"_K (0^(128))$ được dùng để thực hiện phép nhân đa thức lặp Horner trên $FF_(2^(128))$ qua từng khối bản mã $C_i$:
+$ X_i = (X_(i-1) xor C_i) dot H $
+Giá trị Authentication Tag cuối cùng:
+$ "Tag" = X_m xor "AES"_K ("CB"_0) $
+Nếu kẻ tấn công can thiệp bất kỳ bit nào trên Ciphertext ($C_i arrow.r C'_i$), giá trị băm $X'_m$ sẽ biến đổi hoàn toàn theo tính chất khuếch tán của trường Galois, làm phép so sánh Tag tại phía Bob thất bại lập tức.
+
 == Phân công nhiệm vụ hai phía
 
 #align(center)[
