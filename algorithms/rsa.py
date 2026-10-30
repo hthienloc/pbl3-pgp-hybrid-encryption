@@ -1,18 +1,69 @@
 """
 Mô-đun thuật toán RSA số học.
-Cài đặt quá trình sinh khóa, mã hóa và giải mã số học.
+Cài đặt quá trình kiểm tra nguyên tố Miller-Rabin, sinh khóa, mã hóa và giải mã số học.
 """
 
-from .euclid import mod_inverse
+import random
+from .euclid import extended_gcd, mod_inverse
 
-def generate_rsa_keys(p=61, q=53, e=17):
+
+def is_prime(n, k=20):
+    """Kiểm tra số nguyên tố xác suất bằng thuật toán Miller-Rabin."""
+    if n < 2:
+        return False
+    if n in (2, 3):
+        return True
+    if n % 2 == 0:
+        return False
+
+    r, d = 0, n - 1
+    while d % 2 == 0:
+        r += 1
+        d //= 2
+
+    rng = random.SystemRandom()
+    for _ in range(k):
+        a = rng.randrange(2, n - 1)
+        x = pow(a, d, n)
+        if x == 1 or x == n - 1:
+            continue
+        for _ in range(r - 1):
+            x = pow(x, 2, n)
+            if x == n - 1:
+                break
+        else:
+            return False
+    return True
+
+
+def generate_prime(bits=128):
+    """Sinh ngẫu nhiên một số nguyên tố có độ dài bit chỉ định."""
+    rng = random.SystemRandom()
+    while True:
+        candidate = rng.getrandbits(bits) | (1 << (bits - 1)) | 1
+        if is_prime(candidate):
+            return candidate
+
+
+def generate_rsa_keys(p=None, q=None, e=65537, bits=256):
     """
     Sinh cặp khóa Public Key (e, n) và Private Key (d, n).
+    - Nếu truyền p, q cụ thể: dùng trực tiếp p, q đó (ví dụ minh họa p=61, q=53, e=17).
+    - Nếu không truyền p, q: tự động sinh 2 số nguyên tố lớn để modulus n đủ chứa khóa AES-128.
     """
+    if p is None or q is None:
+        prime_bits = max(bits // 2, 72)
+        while True:
+            p = generate_prime(prime_bits)
+            q = generate_prime(prime_bits)
+            if p != q and extended_gcd(e, (p - 1) * (q - 1))[0] == 1:
+                break
+
     n = p * q
     phi = (p - 1) * (q - 1)
     d = mod_inverse(e, phi)
     return (e, n), (d, n)
+
 
 def rsa_encrypt(public_key, plaintext_num):
     """
@@ -23,12 +74,14 @@ def rsa_encrypt(public_key, plaintext_num):
         raise ValueError(f"Dữ liệu ({plaintext_num}) phải nhỏ hơn modulus n ({n})")
     return pow(plaintext_num, e, n)
 
+
 def rsa_decrypt(private_key, ciphertext_num):
     """
     Giải mã số học RSA: M = C^d mod n.
     """
     d, n = private_key
     return pow(ciphertext_num, d, n)
+
 
 if __name__ == "__main__":
     pub_key, priv_key = generate_rsa_keys(p=61, q=53, e=17)

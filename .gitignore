@@ -8,3 +8,7 @@ __pycache__/
 *$py.class
 .venv/
 env/
+
+# Generated local keypairs
+bob_private.json
+bob_public.json
