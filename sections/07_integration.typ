@@ -76,9 +76,9 @@ Tiến trình xử lý trong mã nguồn `algorithms/hybrid_pgp.py` được t�
    - Nạp $K$, Nonce và Authentication Tag vào bộ giải mã AES-GCM.
    - Thực hiện giải mã và kiểm tra mã xác thực toàn vẹn: nếu dữ liệu bị thay đổi, ngoại lệ `ValueError` lập tức được kích hoạt để hủy thông điệp; ngược lại giải mã thành công bản rõ $M$.
 
-== Mã nguồn tích hợp Hybrid PGP (`algorithms/hybrid_pgp.py`)
+== Tham chiếu mã nguồn tích hợp
 
-#raw(read("../algorithms/hybrid_pgp.py"), lang: "python", block: true)
+Toàn bộ logic kết hợp mã hóa lai RSA và AES-GCM giữa Alice và Bob được triển khai tại tệp `algorithms/hybrid_pgp.py` (hai hàm chính: `alice_encrypt_package` và `bob_decrypt_package`).
 
 #import "../components.typ": info-box
 #info-box(title: "Lưu ý kỹ thuật và tính minh bạch")[

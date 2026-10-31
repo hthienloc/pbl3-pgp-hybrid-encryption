@@ -21,13 +21,11 @@ Thuật toán RSA được tổ chức thành các mô-đun độc lập trong t
   )
 ]
 
-== Mã nguồn giải thuật Euclid mở rộng (`algorithms/euclid.py`)
+== Tham chiếu mã nguồn thuật toán RSA
 
-#raw(read("../algorithms/euclid.py"), lang: "python", block: true)
-
-== Mã nguồn thuật toán RSA (`algorithms/rsa.py`)
-
-#raw(read("../algorithms/rsa.py"), lang: "python", block: true)
+Mã nguồn chi tiết được tổ chức tại thư mục `algorithms/`:
+- Giải thuật Euclid mở rộng: `algorithms/euclid.py` (hàm `extended_gcd`, `mod_inverse`).
+- Thuật toán RSA số học: `algorithms/rsa.py` (sinh khóa, kiểm tra Miller–Rabin, mã hóa và giải mã).
 
 == Kết quả thực thi (`algorithms/rsa.py`)
 
