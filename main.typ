@@ -5,7 +5,7 @@
   doc-category: "BÁO CÁO TIẾN ĐỘ – NHÓM 7",
   main-title: "PGP",
   sub-title: "Nguyên lý RSA và mô hình mã hóa lai RSA – AES",
-  author-str: "Sinh viên thực hiện:\n- Vũ Duy Dương (106230007)\n- Huỳnh Thiện Lộc (106230052)\n- Phan Vinh Sơn (106230059)",
+  author-str: "Sinh viên thực hiện:\n- Vũ Duy Dương (106230007)\n- Huỳnh Thiện Lộc (106230052)\n- Phan Vĩnh Sơn (106230059)",
   affiliation-str: "Học phần: PBL3: Mạng máy tính\nGVHD: TS. Trần Thị Minh Hạnh\nĐà Nẵng, 2026",
   heading-color: rgb("#1e40af"),
   heading-font: "Liberation Sans",

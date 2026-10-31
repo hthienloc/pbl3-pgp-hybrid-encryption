@@ -8,7 +8,7 @@
   doc-category: "BÁO CÁO TIẾN ĐỘ – NHÓM 7",
   main-title: "PGP",
   sub-title: "Nguyên lý RSA và mô hình mã hóa lai RSA – AES",
-  author-str: "Vũ Duy Dương (106230007), Huỳnh Thiện Lộc (106230052), Phan Vinh Sơn (106230059)",
+  author-str: "Vũ Duy Dương (106230007), Huỳnh Thiện Lộc (106230052), Phan Vĩnh Sơn (106230059)",
   affiliation-str: "PBL3: Mạng máy tính | GVHD: TS. Trần Thị Minh Hạnh | Đà Nẵng, 2026",
   language: "vi",
   heading-color: rgb("#1d4ed8"),
@@ -118,7 +118,7 @@
           align(center)[*STT*], [*Họ và tên*], align(center)[*MSSV*],
           align(center)[1], [Vũ Duy Dương], align(center)[`106230007`],
           align(center)[2], [Huỳnh Thiện Lộc], align(center)[`106230052`],
-          align(center)[3], [Phan Vinh Sơn], align(center)[`106230059`],
+          align(center)[3], [Phan Vĩnh Sơn], align(center)[`106230059`],
         )
       ]
     ]

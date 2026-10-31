@@ -8,7 +8,7 @@ Báo cáo tiến độ và mã nguồn mô phỏng cơ chế **Mã hóa lai (Hyb
 > **Nhóm thực hiện (Nhóm 7):**
 > - Vũ Duy Dương (106230007)
 > - Huỳnh Thiện Lộc (106230052)
-> - Phan Vinh Sơn (106230059)
+> - Phan Vĩnh Sơn (106230059)
 
 ---
 
