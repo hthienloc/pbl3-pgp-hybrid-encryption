@@ -21,7 +21,8 @@
 #include "sections/06_rsa_example.typ"
 #include "sections/07_integration.typ"
 #include "sections/08_testing.typ"
-#include "sections/09_conclusion.typ"
+#include "sections/09_socket_demo.typ"
+#include "sections/10_conclusion.typ"
 
 #pagebreak()
 #bibliography("references.bib", title: [TÀI LIỆU THAM KHẢO], style: "ieee")

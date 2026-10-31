@@ -35,6 +35,9 @@ Trong môi trường truyền thông mạng, việc truyền tải dữ liệu a
 ├── main.typ                # Điểm vào chính của tài liệu báo cáo Typst
 ├── template.typ            # Cấu hình template, layout và trang bìa
 ├── components.typ          # Các components hộp ghi chú, callout tái sử dụng
+├── styles.typ              # Design system: bảng, node đồ thị, stroke
+├── figures.typ             # Hình vẽ: Fletcher (Hình 1–4) + merman/Mermaid (Hình 5)
+├── references.bib          # Tài liệu tham khảo chuẩn IEEE
 ├── sections/               # Các chương/mục được module hóa
 │   ├── 00_glossary.typ     # Danh mục thuật ngữ và viết tắt
 │   ├── 01_introduction.typ # Giới thiệu, bối cảnh, mục tiêu & phạm vi (kèm sơ đồ Fletcher)
@@ -45,18 +48,30 @@ Trong môi trường truyền thông mạng, việc truyền tải dữ liệu a
 │   ├── 06_rsa_example.typ  # Ví dụ minh họa mã hóa/giải mã số học
 │   ├── 07_integration.typ  # Tích hợp khóa phiên RSA & AES
 │   ├── 08_testing.typ      # Kịch bản kiểm thử (3 test cases)
-│   ├── 09_conclusion.typ   # Kết quả & Hướng phát triển
-│   └── 10_qa.typ           # Bộ câu hỏi phản biện & thảo luận
-└── src/
-    └── rsa.py              # Mã nguồn thuật toán RSA thuần Python (Textbook RSA)
+│   ├── 09_socket_demo.typ  # Mô phỏng truyền thông PGP Hybrid qua Socket TCP
+│   └── 10_conclusion.typ   # Kết quả & Hướng phát triển
+├── algorithms/             # Thư viện mật mã dùng chung
+│   ├── euclid.py           # Euclid mở rộng, nghịch đảo modulo
+│   ├── rsa.py              # Sinh khóa động (Miller–Rabin), mã hóa/giải mã RSA
+│   ├── aes_gcm.py          # AES-GCM (Nonce 12 bytes, Auth Tag 16 bytes)
+│   └── hybrid_pgp.py       # Đóng/mở gói PGP lai RSA + AES-GCM
+├── src/
+│   ├── rsa.py              # Bản RSA độc lập (Textbook RSA) để chạy minh họa
+│   └── hybrid_demo.py      # Demo 3 test case trên một máy
+└── PGP_RSA_AES_Socket_3_files/
+    ├── server_bob.py       # TCP Server: sinh khóa, nhận & giải mã gói tin
+    ├── client_alice.py     # TCP Client: lấy Public Key, mã hóa & gửi
+    └── pgp_crypto.py       # Cầu nối JSON/Base64 ↔ algorithms/
 ```
+
+> **Yêu cầu thư viện:** `algorithms/` và demo socket cần `pycryptodomex` (import `Cryptodome`). Chạy `python3 src/rsa.py` thì không cần thư viện ngoài.
 
 ---
 
 ## 🚀 Hướng dẫn biên dịch và chạy thử
 
 ### 1. Biên dịch tài liệu Typst
-Yêu cầu đã cài đặt [Typst](https://typst.app/):
+Yêu cầu [Typst](https://typst.app/) **>= 0.15.0** (do gói `merman` cho sơ đồ tuần tự). Các gói `fletcher`, `merman` sẽ được Typst tự tải từ Universe ở lần biên dịch đầu tiên (cần Internet):
 
 ```bash
 # Biên dịch ra file PDF một lần
@@ -82,6 +97,25 @@ Bản mã sau khi mã hóa: 1516
 Bản rõ sau khi giải mã: 125
 Kiểm thử thành công: Dữ liệu được khôi phục chính xác 100%!
 ```
+
+### 3. Chạy demo Hybrid trên một máy
+```bash
+python3 src/hybrid_demo.py
+```
+Chương trình tự sinh cặp khóa RSA 256-bit động và chạy 3 test case (khôi phục đúng, sửa ciphertext, sai khóa).
+
+### 4. Chạy demo truyền thông qua Socket TCP (2 máy)
+Máy B (Bob) — khởi động server trước, màn hình sẽ in địa chỉ IP LAN:
+```bash
+cd PGP_RSA_AES_Socket_3_files
+python3 server_bob.py
+```
+Máy A (Alice) — trỏ tới IP của Bob (dùng `127.0.0.1` nếu chạy cùng máy):
+```bash
+cd PGP_RSA_AES_Socket_3_files
+python3 client_alice.py <IP_CUA_BOB>
+```
+Client có 3 chế độ: `1` gửi chuẩn, `2` giả lập sửa ciphertext, `3` giả lập sai `enc_session_key`. Hai bên đối chiếu **SHA-256 fingerprint** của Public Key trước khi trao đổi.
 
 ---
 

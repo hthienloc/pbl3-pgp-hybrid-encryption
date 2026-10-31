@@ -1,6 +1,6 @@
 = Demo chương trình và kết quả kiểm thử
 
-Để đánh giá toàn diện tính đúng đắn, khả năng chống can thiệp và xử lý lỗi của chương trình Python (`src/hybrid_demo.py`), nhóm đã thiết lập 3 kịch bản kiểm thử trọng tâm:
+Để kiểm tra tính đúng đắn và khả năng phát hiện lỗi của chương trình Python (`src/hybrid_demo.py`), hệ thống được thử nghiệm qua 3 kịch bản:
 
 #align(center)[
   #table(
@@ -15,9 +15,9 @@
   )
 ]
 
-== Minh chứng thực nghiệm trên terminal
+== Kết quả thực thi trên terminal
 
-Dưới đây là nhật ký xuất trực tiếp từ terminal khi thực thi chương trình `python3 src/hybrid_demo.py`:
+Dưới đây là nhật ký xuất từ terminal khi chạy `python3 src/hybrid_demo.py`:
 
 ```text
 =================================================================
@@ -26,10 +26,10 @@ DEMO PGP HYBRID ENCRYPTION (RSA + AES-GCM)
 
 [ALICE] Thông điệp gốc: "Báo cáo tiến độ Nhóm 7: PGP Hybrid Encryption hoạt động chính xác!"
 [ALICE] Mã hóa hoàn tất:
-  + Encrypted Session Key (RSA) : 2843
-  + Nonce (AES-GCM)              : 48241c998fc06ff8e676cbb77d3ba152
-  + Ciphertext (AES)            : e33b37b786e44a47b86fd935c285367ae60ccea3... (81 bytes)
-  + Authentication Tag          : f36635e20b731180628dcfd7aaceab49
+  + Encrypted Session Key (RSA) : 0xbe013053248c3eb35cee26cd3ec7e6ae2c...
+  + Nonce (AES-GCM)             : 0398e089ee4da8b197573906d2cc0cd5
+  + Ciphertext (AES)            : a558ef5f7a0d67633054f9e7e588c7d8988db1c9f2a8a90e... (81 bytes)
+  + Authentication Tag          : a8d0cf9ba50332bc0b175330d498275a
 
 -----------------------------------------------------------------
 TEST CASE 01: Bob dùng đúng Private Key của mình
@@ -44,8 +44,8 @@ TEST CASE 02: Kẻ tấn công sửa đổi 1 byte trong Ciphertext
 
 -----------------------------------------------------------------
 TEST CASE 03: Giải mã bằng Private Key không hợp lệ (Khóa của Eve)
-[EVE] Thất bại: Không giải mã được Session Key và bản mã.
-      Chi tiết ngoại lệ: MAC check failed (Sai Session Key dẫn đến xác thực thất bại)
+[EVE] Thất bại: Giải mã RSA ra Session Key sai -> AES-GCM từ chối xác thực.
+      Chi tiết ngoại lệ: MAC check failed (Sai khóa phiên dẫn đến kiểm thực thất bại)
 >>> KẾT QUẢ: [PASSED] Từ chối truy cập trái phép khi sai khóa.
 =================================================================
 ```

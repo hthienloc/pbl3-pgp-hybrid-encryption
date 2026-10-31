@@ -15,11 +15,13 @@ Dưới đây là tổng hợp tiến độ nghiên cứu của nhóm cùng lộ
         [
           - Nắm vững cơ sở lý thuyết về mô hình Hybrid Encryption và cấu trúc chuẩn PGP/OpenPGP.
           - Tự lập trình giải thuật RSA toán học bằng Python (Euclid mở rộng, tính modulo).
+          - Cài đặt sinh khóa RSA động với kiểm tra nguyên tố Miller–Rabin, thay thế cặp $p, q$ cố định.
           - Minh họa thành công chu trình mã hóa và giải mã số học RSA.
           - Xây dựng chương trình Hybrid tích hợp RSA – AES và hoàn thành bộ 3 kiểm thử cơ bản.
+          - Mô phỏng truyền thông PGP Hybrid qua Socket TCP giữa hai máy, có đóng khung gói tin và đối chiếu fingerprint SHA-256.
         ],
         [
-          - Rà soát, làm sạch và tối ưu hóa mã nguồn toàn bộ hệ thống tích hợp.
+          - Bọc kênh truyền bằng TLS và thay cơ chế trao đổi khóa thủ công bằng chứng chỉ số.
           - Mở rộng chức năng tạo chữ ký số bằng RSA và hàm băm SHA-256 để đảm bảo tính chống chối bỏ.
           - Kiểm thử hệ thống với dữ liệu thực tế lớn (tệp tin văn bản, ảnh, nhị phân).
           - Đo đạc thời gian thực thi (độ trễ và thông lượng) giữa mã hóa thuần RSA so với Hybrid Encryption.

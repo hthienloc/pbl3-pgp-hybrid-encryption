@@ -1,4 +1,6 @@
 #import "@preview/fletcher:0.5.6" as fletcher: diagram, node, edge
+#import "@preview/chronos:0.3.0"
+#import "@preview/diagraph:0.3.8": raw-render
 #import "styles.typ": (
   d-node,
   entity-badge,
@@ -11,229 +13,256 @@
   stroke-axis,
 )
 
-// --- HÌNH 1: NGUYÊN LÝ MÃ HÓA VÀ GIẢI MÃ LAI RSA - AES ---
+// --- HÌNH 1: NGUYÊN LÝ MÃ HÓA VÀ GIẢI MÃ LAI RSA - AES (DÙNG DIAGRAPH AUTO-LAYOUT DỌC) ---
 #let fig-hybrid-overview = figure(
-  diagram(
-    spacing: (16mm, 10mm),
-    node-stroke: 0.8pt + black,
-    node-fill: none,
-    node-corner-radius: 3pt,
-    edge-stroke: 0.8pt + black,
+  raw-render(
+    ```dot
+    digraph {
+      rankdir=TB;
+      nodesep=0.35;
+      ranksep=0.38;
+      node [shape=box, style="rounded,filled", fillcolor="white", penwidth=0.8, margin="0.10,0.06"];
+      edge [penwidth=0.8, arrowsize=0.7, color="black"];
 
-    // Huy hiệu thực thể
-    node((-0.9, 0.6), entity-badge("Alice", "Người gửi", gender: "female"), name: <badge_alice>, stroke: 0.8pt + black, shape: rect, corner-radius: 4pt, inset: 5pt),
-    node((-0.9, 4.0), entity-badge("Bob", "Người nhận", gender: "male"), name: <badge_bob>, stroke: 0.8pt + black, shape: rect, corner-radius: 4pt, inset: 5pt),
+      subgraph cluster_alice {
+        label="Phía Alice (Mã hóa)";
+        labeljust="l";
+        style="rounded,dashed";
+        color="#64748b";
+        fontsize=10;
+        { rank=same; m; key; pub; }
+        m -> aes_enc;
+        key -> aes_enc;
+        key -> rsa_enc;
+        pub -> rsa_enc;
+        aes_enc -> cdata;
+        rsa_enc -> ckey;
+      }
 
-    // --- HÀNG 1: QUÁ TRÌNH MÃ HÓA (ALICE) ---
-    d-node((0, 0), "Bản rõ gốc", sub: $M$, kind: "data", name: <m>),
-    d-node((0, 1.2), "Session Key", sub: [$K$ ngẫu nhiên], kind: "key", name: <key>),
+      subgraph cluster_bob {
+        label="Phía Bob (Giải mã)";
+        labeljust="l";
+        style="rounded,dashed";
+        color="#64748b";
+        fontsize=10;
+        { rank=same; b_cdata; b_ckey; priv; }
+        b_cdata -> aes_dec;
+        b_ckey -> rsa_dec;
+        priv -> rsa_dec;
+        rsa_dec -> key_out;
+        key_out -> aes_dec;
+        aes_dec -> m_out;
+      }
 
-    d-node((1.3, 0), "Mã hóa AES", sub: [Dùng khóa $K$], kind: "process", name: <aes_enc>),
-    d-node((1.3, 1.2), "Mã hóa RSA", sub: [Bảo vệ $K$], kind: "process", name: <rsa_enc>),
-    d-node((1.3, 2.2), "Public Key Bob", sub: [($e_B, n$)], kind: "auth", name: <pub>),
-
-    d-node((2.6, 0), "Bản mã dữ liệu", sub: $C_("data")$, kind: "process", name: <cdata>),
-    d-node((2.6, 1.2), "Khóa phiên mã hóa", sub: $C_("key")$, kind: "process", name: <ckey>),
-
-    // --- HÀNG 2: QUÁ TRÌNH GIẢI MÃ (BOB) ---
-    d-node((2.6, 3.4), "Bản mã dữ liệu", sub: $C_("data")$, kind: "process", name: <b_cdata>),
-    d-node((2.6, 4.6), "Khóa phiên mã hóa", sub: $C_("key")$, kind: "process", name: <b_ckey>),
-
-    d-node((1.3, 3.4), "Giải mã AES", sub: [Dùng khóa $K$], kind: "process", name: <aes_dec>),
-    d-node((1.3, 4.6), "Giải mã RSA", sub: [Lấy lại $K$], kind: "process", name: <rsa_dec>),
-    d-node((1.3, 5.6), "Private Key Bob", sub: [($d_B, n$)], kind: "key", name: <priv>),
-
-    d-node((0, 3.4), "Bản rõ khôi phục", sub: $M' = M$, kind: "data", name: <m_out>),
-    d-node((0, 4.6), "Session Key", sub: [$K$ khôi phục], kind: "key", name: <key_out>),
-
-    // Nối từ thực thể vào quy trình
-    edge(<badge_alice>, <m>, stroke: (paint: black, thickness: 0.6pt, dash: "dashed")),
-    edge(<badge_bob>, <m_out>, stroke: (paint: black, thickness: 0.6pt, dash: "dashed")),
-
-    // Nối phía Alice: Từ trái sang phải
-    edge(<m>, <aes_enc>, "-|>"),
-    edge(<key>, (0.6, 1.2), (0.6, 0.3), <aes_enc>, "-|>"),
-    edge(<key>, <rsa_enc>, "-|>"),
-    edge(<pub>, <rsa_enc>, "-|>"),
-    edge(<aes_enc>, <cdata>, "-|>"),
-    edge(<rsa_enc>, <ckey>, "-|>"),
-
-    // Đường truyền mạng kết nối từ Alice (tầng trên) sang Bob (tầng dưới)
-    edge(<cdata>, (4.3, 0), (4.3, 3.4), <b_cdata>, "-|>", [#text(size: 8pt)[Kênh mạng]], label-pos: 0.5, label-side: right, stroke: stroke-network),
-    edge(<ckey>, (3.4, 1.2), (3.4, 4.6), <b_ckey>, "-|>", stroke: stroke-network),
-
-    // Nối phía Bob: Từ phải sang trái
-    edge(<b_cdata>, <aes_dec>, "-|>"),
-    edge(<b_ckey>, <rsa_dec>, "-|>"),
-    edge(<priv>, <rsa_dec>, "-|>"),
-    edge(<rsa_dec>, <key_out>, "-|>"),
-    edge(<key_out>, (0.7, 4.6), (0.7, 3.7), <aes_dec>, "-|>"),
-    edge(<aes_dec>, <m_out>, "-|>"),
+      cdata -> b_cdata [style=dashed, label=" Kênh mạng"];
+      ckey -> b_ckey [style=dashed];
+    }
+    ```,
+    labels: (
+      "m": align(center)[*Bản rõ gốc*\ $M$],
+      "key": align(center)[*Session Key*\ $K$ ngẫu nhiên],
+      "pub": align(center)[*Public Key Bob*\ $(e_B, n)$],
+      "aes_enc": align(center)[*Mã hóa AES*\ Dùng khóa $K$],
+      "rsa_enc": align(center)[*Mã hóa RSA*\ Bảo vệ $K$],
+      "cdata": align(center)[*Bản mã dữ liệu*\ $C_("data")$],
+      "ckey": align(center)[*Khóa phiên mã hóa*\ $C_("key")$],
+      "b_cdata": align(center)[*Bản mã dữ liệu*\ $C_("data")$],
+      "b_ckey": align(center)[*Khóa phiên mã hóa*\ $C_("key")$],
+      "priv": align(center)[*Private Key Bob*\ $(d_B, n)$],
+      "rsa_dec": align(center)[*Giải mã RSA*\ Lấy lại $K$],
+      "key_out": align(center)[*Session Key*\ $K$ khôi phục],
+      "aes_dec": align(center)[*Giải mã AES*\ Dùng khóa $K$],
+      "m_out": align(center)[*Bản rõ khôi phục*\ $M' = M$],
+    ),
+    width: 72%,
   ),
   caption: [Sơ đồ nguyên lý mã hóa và giải mã lai RSA – AES khép kín trong mô hình PGP],
 )
 
-// --- HÌNH 2: SƠ ĐỒ TUẦN TỰ TƯƠNG TÁC ALICE - BOB ---
+// --- HÌNH 2: SƠ ĐỒ TUẦN TỰ TƯƠNG TÁC ALICE - BOB (DÙNG CHRONOS HỖ TRỢ MATH) ---
 #let fig-sequence-interaction = figure(
-  diagram(
-    spacing: (28mm, 7.8mm),
-    node-stroke: 0.8pt + black,
-    node-fill: none,
-    node-corner-radius: 3pt,
-    edge-stroke: 0.8pt + black,
+  chronos.diagram(width: 100%, {
+    import chronos: *
+    _par("A", display-name: [*Alice*\ #text(size: 8pt, fill: luma(80))[Người gửi]], color: white, show-bottom: true)
+    _par("C", display-name: [*Kênh mạng*\ #text(size: 8pt, fill: luma(80))[Truyền thông]], color: white, show-bottom: true)
+    _par("B", display-name: [*Bob*\ #text(size: 8pt, fill: luma(80))[Người nhận]], color: white, show-bottom: true)
 
-    // Thực thể đồng nhất với Hình 1
-    node((0, 0), entity-badge("Alice", "Người gửi", gender: "female"), name: <alice>, stroke: 0.8pt + black, shape: rect, corner-radius: 4pt, inset: 5pt),
-    node((1, 0), align(center)[#text(size: 8pt)[*Kênh mạng*]\ #text(size: 7pt, fill: luma(90))[Truyền thông]], name: <channel>, stroke: 0.8pt + black, shape: rect, corner-radius: 4pt, inset: 5pt),
-    node((2, 0), entity-badge("Bob", "Người nhận", gender: "male"), name: <bob>, stroke: 0.8pt + black, shape: rect, corner-radius: 4pt, inset: 5pt),
+    _note("over", pos: "B", shape: "rect", color: luma(248))[
+      #align(left)[
+        *0. Sinh cặp khóa RSA:*\
+        Public Key $(e_B, n)$, Private Key $(d_B, n)$
+      ]
+    ]
+    _seq("B", "A", comment: [Công khai Public Key $(e_B, n)$], dashed: true)
 
-    // Trục thời gian Alice
-    edge(<alice>, (0, 1.45), "--", stroke: stroke-axis),
-    edge((0, 2.15), (0, 2.35), "--", stroke: stroke-axis),
-    edge((0, 3.05), (0, 3.25), "--", stroke: stroke-axis),
-    edge((0, 3.95), (0, 5.8), "--", stroke: stroke-axis),
+    _note("over", pos: "A", shape: "rect", color: luma(248))[
+      #align(left)[
+        *1. Sinh khóa phiên* $K$ và vector $"IV"$\
+        *2. Mã hóa AES-GCM:* $(C_("data"), "Tag") = "AES"_K (M, "IV")$\
+        *3. Mã hóa RSA:* $C_("key") = "RSA"_(e_B)(K)$
+      ]
+    ]
 
-    // Trục thời gian Kênh mạng
-    edge(<channel>, (1, 0.7), "--", stroke: stroke-axis),
-    edge((1, 1.3), (1, 4.3), "--", stroke: stroke-axis),
-    edge((1, 4.3), (1, 5.8), "--", stroke: stroke-axis),
+    _seq("A", "C", comment: [Gửi gói tin PGP: $\{C_("key"), "IV", C_("data"), "Tag"\}$])
+    _seq("C", "B", comment: [Tiếp nhận gói tin PGP])
 
-    // Trục thời gian Bob
-    edge(<bob>, (2, 0.65), "--", stroke: stroke-axis),
-    edge((2, 1.35), (2, 4.7), "--", stroke: stroke-axis),
-    edge((2, 5.3), (2, 5.5), "--", stroke: stroke-axis),
-    edge((2, 6.1), (2, 6.3), "--", stroke: stroke-axis),
-
-    // BƯỚC 0: BOB SINH KHÓA VÀ GỬI PUBLIC KEY CHO ALICE
-    node((2, 1.0), align(left)[#text(size: 8pt)[*0. Sinh khóa RSA*:\ $(e_B, n)$ & $(d_B, n)$]], name: <b0>, stroke: stroke-key, shape: rect),
-    edge((2, 1.0), (0, 1.0), "-|>", [#text(size: 7.5pt)[Công khai Public Key $(e_B, n)$]], label-pos: 0.35, label-side: right, stroke: stroke-network),
-
-    // BƯỚC 1, 2, 3: ALICE TIẾN HÀNH MÃ HÓA
-    node((0, 1.8), align(left)[#text(size: 8pt)[*1. Sinh khóa* $K$\ ngẫu nhiên]], name: <a1>, stroke: stroke-key, shape: rect),
-    node((0, 2.7), align(left)[#text(size: 8pt)[*2. Mã hóa AES*:\ $C_("data") = "AES"_K (M)$]], name: <a2>, stroke: 0.8pt + black, shape: rect),
-    node((0, 3.6), align(left)[#text(size: 8pt)[*3. Mã hóa RSA*:\ $C_("key") = "RSA"_(e_B)(K)$]], name: <a3>, stroke: 0.8pt + black, shape: rect),
-
-    // GỬI GÓI TIN PGP SANG BOB
-    edge((0, 4.3), (1, 4.3), "-|>", [#text(size: 8pt)[Gửi gói tin]], label-pos: 0.35, label-side: left),
-    node((1, 4.3), align(center)[#text(size: 8pt)[*Gói tin PGP:*\ {$C_("key"), "IV", C_("data"), "Tag"$}]], name: <pkg>, stroke: stroke-package, shape: rect),
-    edge((1, 4.3), (2, 4.3), "-|>", [#text(size: 8pt)[Tiếp nhận]], label-pos: 0.65, label-side: left),
-
-    // BƯỚC 4, 5: BOB GIẢI MÃ
-    node((2, 5.0), align(left)[#text(size: 8pt)[*4. Giải mã RSA*:\ $K = "RSA"_(d_B)(C_("key"))$]], name: <b1>, stroke: 0.8pt + black, shape: rect),
-    node((2, 5.8), align(left)[#text(size: 8pt)[*5. Giải mã AES & Xác thực*:\ $M = "AES"_K (C_("data"))$]], name: <b2>, stroke: stroke-auth, shape: rect),
-  ),
+    _note("over", pos: "B", shape: "rect", color: luma(248))[
+      #align(left)[
+        *4. Giải mã RSA:* $K = "RSA"_(d_B)(C_("key"))$\
+        *5. Xác thực toàn vẹn:* Đối chiếu $"Tag"$ (GHASH)\
+        *6. Giải mã AES-GCM:* $M = "AES"_K (C_("data"), "IV")$
+      ]
+    ]
+  }),
   caption: [Sơ đồ tuần tự quy trình truyền thông mã hóa lai PGP giữa Alice và Bob],
 )
 
-// --- HÌNH 3: VÍ DỤ SỐ HỌC RSA (CÓ ĐỒNG BỘ ALICE & BOB) ---
+// --- HÌNH 3: VÍ DỤ SỐ HỌC RSA (DÙNG DIAGRAPH AUTO-LAYOUT DỌC) ---
 #let fig-rsa-numeric-example = figure(
-  diagram(
-    spacing: (16mm, 11mm),
-    node-stroke: 0.8pt + black,
-    node-fill: none,
-    node-corner-radius: 3pt,
-    edge-stroke: 0.8pt + black,
+  raw-render(
+    ```dot
+    digraph {
+      rankdir=TB;
+      nodesep=0.45;
+      ranksep=0.38;
+      node [shape=box, style="rounded,filled", fillcolor="white", penwidth=0.8, margin="0.10,0.06"];
+      edge [penwidth=0.8, arrowsize=0.7, color="black"];
 
-    // Huy hiệu Alice & Bob
-    node((-0.9, 0), entity-badge("Alice", "Bên gửi", gender: "female"), name: <badge_alice>, stroke: 0.8pt + black, shape: rect, corner-radius: 4pt, inset: 5pt),
-    node((-0.9, 1.4), entity-badge("Bob", "Bên nhận", gender: "male"), name: <badge_bob>, stroke: 0.8pt + black, shape: rect, corner-radius: 4pt, inset: 5pt),
+      subgraph cluster_alice {
+        label="Alice (Bên gửi)";
+        style="rounded,dashed";
+        color="#64748b";
+        fontsize=10;
+        { rank=same; m; pub; }
+        m -> enc;
+        pub -> enc;
+        enc -> c;
+      }
 
-    // Hàng 1: Mã hóa (Alice)
-    d-node((0, 0), "Bản rõ", sub: $M = 125$, kind: "data", name: <m>),
-    d-node((1.3, 0), "Mã hóa RSA", sub: $C = M^e mod n$, kind: "process", name: <enc>),
-    d-node((1.3, -1.0), "Khóa công khai", sub: [$(e=17, n=3233)$], kind: "auth", name: <pub>),
-    d-node((2.6, 0), "Bản mã", sub: $C = 1516$, kind: "package", name: <c>),
+      subgraph cluster_bob {
+        label="Bob (Bên nhận)";
+        style="rounded,dashed";
+        color="#64748b";
+        fontsize=10;
+        { rank=same; c_bob; priv; }
+        c_bob -> dec;
+        priv -> dec;
+        dec -> m2;
+      }
 
-    // Hàng 2: Giải mã (Bob)
-    d-node((2.6, 1.4), "Giải mã RSA", sub: $M' = C^d mod n$, kind: "process", name: <dec>),
-    d-node((1.3, 1.4), "Khôi phục", sub: $M' = 125$, kind: "data", name: <m2>),
-    d-node((2.6, 2.4), "Khóa bí mật", sub: [$(d=2753, n=3233)$], kind: "key", name: <priv>),
-
-    // Nối chỉ định thực thể
-    edge(<badge_alice>, <m>, stroke: (paint: black, thickness: 0.6pt, dash: "dashed")),
-    edge(<m2>, <badge_bob>, stroke: (paint: black, thickness: 0.6pt, dash: "dashed")),
-
-    // Nối luồng mã hóa & giải mã
-    edge(<m>, <enc>, "-|>"),
-    edge(<pub>, <enc>, "-|>"),
-    edge(<enc>, <c>, "-|>"),
-    edge(<c>, <dec>, "-|>", [#text(size: 7.5pt)[Gửi qua mạng]], label-pos: 0.5, label-side: right, stroke: stroke-network),
-    edge(<priv>, <dec>, "-|>"),
-    edge(<dec>, <m2>, "-|>"),
+      c -> c_bob [style=dashed, label=" Gửi qua mạng"];
+    }
+    ```,
+    labels: (
+      "m": align(center)[*Bản rõ*\ $M = 125$],
+      "pub": align(center)[*Khóa công khai*\ $(e=17, n=3233)$],
+      "enc": align(center)[*Mã hóa RSA*\ $C = M^e mod n$],
+      "c": align(center)[*Bản mã*\ $C = 1516$],
+      "c_bob": align(center)[*Bản mã nhận*\ $C = 1516$],
+      "priv": align(center)[*Khóa bí mật*\ $(d=2753, n=3233)$],
+      "dec": align(center)[*Giải mã RSA*\ $M' = C^d mod n$],
+      "m2": align(center)[*Khôi phục*\ $M' = 125$],
+    ),
+    width: 55%,
   ),
   caption: [Sơ đồ chu trình xử lý dữ liệu và khóa trong ví dụ số học RSA giữa Alice và Bob],
 )
 
-// --- HÌNH 4: CẤU TRÚC GÓI DỮ LIỆU ĐÓNG GÓI VÀ PHÂN TÍCH CÚ PHÁP TẠI BỘ GIẢI MÃ BOB ---
+// --- HÌNH 4: CẤU TRÚC GÓI DỮ LIỆU ĐÓNG GÓI VÀ PHÂN TÍCH CÚ PHÁP TẠI BỘ GIẢI MÃ BOB (DÙNG DIAGRAPH) ---
 #let fig-packet-layout = figure(
-  diagram(
-    spacing: (13mm, 13mm),
-    node-stroke: 0.8pt + black,
-    node-fill: none,
-    node-corner-radius: 3pt,
-    edge-stroke: 0.8pt + black,
+  raw-render(
+    ```dot
+    digraph {
+      rankdir=TB;
+      nodesep=0.18;
+      ranksep=0.35;
+      node [shape=box, style="rounded,filled", fillcolor="white", penwidth=0.8, margin="0.08,0.05"];
+      edge [penwidth=0.8, arrowsize=0.7, color="black"];
 
-    // Huy hiệu Bob (Người nhận / Bộ phân tích gói tin)
-    node((-0.9, 0), entity-badge("Bob", "Phía nhận", gender: "male"), name: <badge_bob>, stroke: 0.8pt + black, shape: rect, corner-radius: 4pt, inset: 5pt),
+      subgraph cluster_packet {
+        label="Cấu trúc khung gói tin PGP (Byte Stream)";
+        style="rounded,dashed";
+        color="#64748b";
+        fontsize=10;
+        { rank=same; f_key; f_nonce; f_data; f_tag; }
+        f_key -> f_nonce -> f_data -> f_tag [style=invis];
+      }
 
-    // Dãy khung gói tin liên tục (Header & Payload)
-    node((0, 0), align(center)[
-      #text(size: 7.5pt, fill: luma(80))[0 .. 255 (256B)]\
-      *RSA Key*\
-      #text(size: 8pt)[Khóa phiên]
-    ], name: <f_key>, shape: rect, stroke: stroke-process),
+      subgraph cluster_bob {
+        label="Phân tích cú pháp tại bộ nhận của Bob";
+        style="rounded,dashed";
+        color="#64748b";
+        fontsize=10;
+        { rank=same; p_key; p_nonce; p_data; p_tag; }
+        p_key -> p_nonce -> p_data -> p_tag [style=invis];
+      }
 
-    node((1, 0), align(center)[
-      #text(size: 7.5pt, fill: luma(80))[256 .. 267 (12B)]\
-      *Nonce / IV*\
-      #text(size: 8pt)[Ngẫu nhiên GCM]
-    ], name: <f_nonce>, shape: rect, stroke: stroke-key),
-
-    node((2, 0), align(center)[
-      #text(size: 7.5pt, fill: luma(80))[268 .. 268+L-1 ($L$ B)]\
-      *AES Ciphertext*\
-      #text(size: 8pt)[Dữ liệu mã hóa]
-    ], name: <f_data>, shape: rect, stroke: stroke-process),
-
-    node((3, 0), align(center)[
-      #text(size: 7.5pt, fill: luma(80))[Cuối cùng (16B)]\
-      *Auth Tag*\
-      #text(size: 8pt)[Mã MAC toàn vẹn]
-    ], name: <f_tag>, shape: rect, stroke: stroke-auth),
-
-    // Chức năng phân tích cú pháp ở bộ giải mã (Parser Target phía Bob)
-    node((0, 1.1), align(center)[
-      #text(size: 8pt)[*1. Giải mã RSA*]\
-      `rsa_decrypt()`\
-      $arrow.b$ Lấy khóa $K$
-    ], name: <p_key>, shape: rect, stroke: stroke-data),
-
-    node((1, 1.1), align(center)[
-      #text(size: 8pt)[*2. Nạp IV*]\
-      `AES.new(K, ...)`\
-      $arrow.b$ Nạp `nonce`
-    ], name: <p_nonce>, shape: rect, stroke: stroke-key),
-
-    node((2, 1.1), align(center)[
-      #text(size: 8pt)[*3. Giải mã AES*]\
-      `decrypt()`\
-      $arrow.b$ Khôi phục $M$
-    ], name: <p_data>, shape: rect, stroke: stroke-data),
-
-    node((3, 1.1), align(center)[
-      #text(size: 8pt)[*4. Kiểm thực MAC*]\
-      `verify(tag)`\
-      $arrow.b$ Chống giả mạo
-    ], name: <p_tag>, shape: rect, stroke: stroke-auth),
-
-    // Nối từ badge Bob vào gói tin nhận được
-    edge(<badge_bob>, <f_key>, stroke: (paint: black, thickness: 0.6pt, dash: "dashed")),
-
-    // Mũi tên chỉ mục ánh xạ từ trường sang hàm xử lý
-    edge(<f_key>, <p_key>, "-|>"),
-    edge(<f_nonce>, <p_nonce>, "-|>"),
-    edge(<f_data>, <p_data>, "-|>"),
-    edge(<f_tag>, <p_tag>, "-|>"),
+      f_key -> p_key;
+      f_nonce -> p_nonce;
+      f_data -> p_data;
+      f_tag -> p_tag;
+    }
+    ```,
+    labels: (
+      "f_key": align(center)[*0 .. 255 (256B)*\ *Khóa RSA* $C_("key")$\ #text(size: 7.5pt)[Khóa phiên mã hóa]],
+      "f_nonce": align(center)[*256 .. 267 (12B)*\ *Nonce / IV*\ #text(size: 7.5pt)[Vector GCM]],
+      "f_data": align(center)[*268 .. 268+L-1*\ *Bản mã* $C_("data")$\ #text(size: 7.5pt)[Dữ liệu AES-GCM]],
+      "f_tag": align(center)[*Cuối cùng (16B)*\ *Auth Tag*\ #text(size: 7.5pt)[Mã băm GHASH]],
+      "p_key": align(center)[*1. Giải mã RSA*\ `rsa_decrypt()`\ #text(size: 7.5pt)[Lấy khóa $K$]],
+      "p_nonce": align(center)[*2. Nạp IV*\ `AES.new(K, ...)`\ #text(size: 7.5pt)[Nạp nonce]],
+      "p_data": align(center)[*3. Giải mã AES*\ `decrypt()`\ #text(size: 7.5pt)[Khôi phục $M$]],
+      "p_tag": align(center)[*4. Kiểm thực*\ `verify(tag)`\ #text(size: 7.5pt)[Chống giả mạo]],
+    ),
+    width: 95%,
   ),
   caption: [Sơ đồ cấu trúc khung gói tin (Packet Framing) và luồng phân tích cú pháp tại bộ nhận của Bob],
+)
+
+
+// --- HÌNH 5: SƠ ĐỒ TUẦN TỰ TRUYỀN THÔNG QUA SOCKET TCP (DÙNG CHRONOS) ---
+#let fig-socket-sequence = figure(
+  chronos.diagram(width: 100%, {
+    import chronos: *
+    _par("A", display-name: [*Alice (TCP Client)*\ #text(size: 8pt, fill: luma(80))[Máy gửi]], color: white, show-bottom: true)
+    _par("C", display-name: [*Kênh TCP :5000*\ #text(size: 8pt, fill: luma(80))[Length-prefixed JSON]], color: white, show-bottom: true)
+    _par("B", display-name: [*Bob (TCP Server)*\ #text(size: 8pt, fill: luma(80))[Máy nhận]], color: white, show-bottom: true)
+
+    _note("over", pos: "B", shape: "rect", color: luma(248))[
+      #align(left)[
+        *0. Khởi tạo Server:*\
+        Sinh khóa RSA $(e_B, n), (d_B, n)$\
+        `listen(0.0.0.0:5000)`
+      ]
+    ]
+
+    _seq("A", "B", comment: [1. Yêu cầu khóa: `{"action": "GET_PUBLIC_KEY"}`])
+    _seq("B", "A", comment: [2. Trả Public Key $(e_B, n)$], dashed: true)
+
+    _note("across", shape: "rect", color: luma(248))[
+      *3. Xác thực ngoại vi (Out-of-Band):* Đối chiếu SHA-256 Public Key Fingerprint
+    ]
+
+    _note("over", pos: "A", shape: "rect", color: luma(248))[
+      #align(left)[
+        *4. Đóng gói Hybrid PGP:*\
+        - Sinh khóa phiên $K$ (16B) & $"nonce"$ (12B)\
+        - $(C_("data"), "Tag") = "AES-GCM"_K (M, "nonce")$\
+        - $C_("key") = "RSA"_(e_B)(K)$
+      ]
+    ]
+
+    _seq("A", "C", comment: [5. Gửi `[4B Length] + JSON Envelope`])
+    _seq("C", "B", comment: [$C_("key")$ (hex), $"nonce", C_("data"), "Tag"$ (Base64)])
+
+    _note("over", pos: "B", shape: "rect", color: luma(248))[
+      #align(left)[
+        *6. Giải mã & Xác thực:*\
+        - $K = "RSA"_(d_B)(C_("key"))$\
+        - Kiểm thực $"Tag"$ (GHASH) & giải mã $M$
+      ]
+    ]
+
+    _seq("B", "A", comment: [7. Phản hồi kết quả: `{"status": "OK" | "ERROR"}`], dashed: true)
+  }),
+  caption: [Sơ đồ tuần tự mô phỏng PGP Hybrid qua Socket TCP giữa máy Alice và máy Bob],
 )

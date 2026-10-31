@@ -3,7 +3,7 @@
 
 = Tích hợp RSA và AES trong Hybrid Encryption
 
-Trong mô hình mã hóa lai hoàn chỉnh, RSA tuyệt đối không tham gia trực tiếp vào việc mã hóa khối dữ liệu thông điệp dài mà đóng vai trò là "két sắt" bảo vệ Session Key. AES đảm nhận toàn bộ việc mã hóa dữ liệu tốc độ cao.
+Trong mô hình mã hóa lai, RSA không dùng để mã hóa trực tiếp khối dữ liệu bản rõ có kích thước lớn, mà chỉ mã hóa khóa phiên (Session Key). Toàn bộ khối dữ liệu thông điệp được mã hóa bằng thuật toán đối xứng AES để tối ưu hiệu năng tính toán.
 
 == Cấu trúc khung gói tin (Packet Framing & Offset)
 
@@ -15,9 +15,9 @@ Khi truyền tải qua mạng, dòng dữ liệu PGP được cấu trúc thành
 ]
 #v(0.3em)
 
-Trong cấu trúc gói tin trên, hai thành phần bổ trợ thiết yếu của chế độ mã hóa xác thực AES-GCM gồm có:
-- *Vector khởi tạo (IV - Initialization Vector / Nonce):* Là một chuỗi ngẫu nhiên dài 12 bytes (96 bits) được sinh mới cho mỗi thông điệp. IV đóng vai trò ngăn chặn việc hai thông điệp có nội dung giống nhau sinh ra cùng một bản mã khi dùng chung khóa phiên. IV không cần giữ bí mật và được truyền công khai trong gói tin, nhưng tuyệt đối không được tái sử dụng cùng một cặp $(K, "IV")$.
-- *Mã xác thực thông điệp (Authentication Tag):* Là một thẻ kiểm thực mật mã dài 16 bytes (128 bits) được hàm băm GHASH tự động tính toán từ toàn bộ dữ liệu mã hóa. Tag hoạt động như một "tem niêm phong điện tử": nếu kẻ tấn công sửa đổi bất kỳ bit nào trên Ciphertext khi gói tin di chuyển trên mạng, phép xác minh Tag tại phía Bob sẽ thất bại ngay lập tức, giúp bảo toàn tính toàn vẹn dữ liệu.
+Trong cấu trúc gói tin trên, hai thành phần của chế độ mã hóa xác thực AES-GCM gồm có:
+- *Vector khởi tạo (IV - Initialization Vector / Nonce):* Là chuỗi ngẫu nhiên 12 bytes (96 bits) được sinh mới cho mỗi thông điệp, nhằm tránh trùng lặp bản mã khi mã hóa các thông điệp khác nhau bằng cùng một khóa phiên. IV được truyền công khai trong gói tin, và theo chuẩn GCM, không được tái sử dụng cùng một cặp $(K, "IV")$.
+- *Mã xác thực thông điệp (Authentication Tag):* Là thẻ kiểm thực mật mã 16 bytes (128 bits) do hàm băm GHASH tính toán từ dữ liệu mã hóa. Nếu dữ liệu trên đường truyền bị thay đổi, phép kiểm tra Authentication Tag tại phía nhận sẽ thất bại và gói tin bị từ chối.
 
 == Cơ sở toán học của AES-GCM (AEAD)
 
@@ -67,18 +67,18 @@ Tiến trình xử lý trong mã nguồn `algorithms/hybrid_pgp.py` được t�
 1. *Hàm đóng gói mã hóa (`alice_encrypt_package`):*
    - Khởi tạo khóa phiên ngẫu nhiên $K$ độ dài 128-bit (`os.urandom(16)`).
    - Mã hóa bản rõ $M$ bằng AES-GCM với khóa $K$, trích xuất bộ ba: Ciphertext ($C_("data")$), Nonce (IV 12 bytes) và Authentication Tag (16 bytes).
-   - Dùng Public Key của Bob $(e_B, n)$ mã hóa khóa phiên $K$ theo thuật toán RSA: $C_("key") = K^{e_B} mod n$.
+   - Dùng Public Key của Bob $(e_B, n)$ mã hóa khóa phiên $K$ theo thuật toán RSA: $C_("key") = K^{e_B} mod n$. Khóa phiên được mã hóa *trọn vẹn* dưới dạng số nguyên 128-bit (không lấy modulo $n$ trước khi mã hóa), do đó yêu cầu modulus $n > 2^128$.
    - Ghép 4 thành phần thành cấu trúc payload duy nhất để truyền qua mạng.
 
 2. *Hàm tiếp nhận và giải mã (`bob_decrypt_package`):*
    - Tách gói tin nhận được thành 4 thành phần theo cấu trúc offset đã định nghĩa ở Hình 4.
-   - Dùng Private Key của Bob $(d_B, n)$ giải mã trường $C_("key")$ để khôi phục lại khóa phiên $K$.
+   - Dùng Private Key của Bob $(d_B, n)$ giải mã trường $C_("key")$ để khôi phục lại khóa phiên $K$. Kết quả số học được chuyển về đúng 16 bytes; nếu giải mã bằng sai khóa khiến giá trị vượt quá 128-bit, phần dư được cắt bằng mask `& ((1 << 128) - 1)` thay vì ném `OverflowError`, nhờ đó AES-GCM vẫn kiểm tra Tag và từ chối gói tin một cách an toàn.
    - Nạp $K$, Nonce và Authentication Tag vào bộ giải mã AES-GCM.
    - Thực hiện giải mã và kiểm tra mã xác thực toàn vẹn: nếu dữ liệu bị thay đổi, ngoại lệ `ValueError` lập tức được kích hoạt để hủy thông điệp; ngược lại giải mã thành công bản rõ $M$.
 
 == Mã nguồn tích hợp Hybrid PGP (`algorithms/hybrid_pgp.py`)
 
-#raw(read("../algorithms/hybrid_pgp.py"), lang: "python")
+#raw(read("../algorithms/hybrid_pgp.py"), lang: "python", block: true)
 
 #import "../components.typ": info-box
 #info-box(title: "Lưu ý kỹ thuật và tính minh bạch")[

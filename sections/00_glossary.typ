@@ -21,6 +21,11 @@
       ([*IV / Nonce*], [Tham số AES], [Initialization Vector / Number Used Once], [Vector khởi tạo ngẫu nhiên (12 bytes) giúp triệt tiêu hiện tượng trùng lặp bản mã khi mã hóa cùng dữ liệu.]),
       ([*Authentication Tag*], [Toàn vẹn], [Message Authentication Code (MAC)], [Mã kiểm thực (16 bytes) giúp phía nhận phát hiện mọi hành vi can thiệp hay sửa đổi bản mã trên mạng.]),
       ([*OAEP*], [Cơ chế đệm], [Optimal Asymmetric Encryption Padding], [Cơ chế đệm ngẫu nhiên an toàn chống tấn công chọn bản mã cho RSA.]),
+      ([*Miller–Rabin*], [Số học], [Miller–Rabin Primality Test], [Thuật toán kiểm tra số nguyên tố xác suất, được dùng để sinh $p, q$ động trong quá trình tạo khóa RSA.]),
+      ([*TCP*], [Giao thức mạng], [Transmission Control Protocol], [Giao thức truyền luồng tin cậy, có thứ tự, bảo đảm dữ liệu đến đủ và đúng thứ tự.]),
+      ([*Socket*], [Lập trình mạng], [Berkeley Sockets API], [Điểm cuối giao tiếp giữa hai tiến trình qua mạng, định danh bởi cặp địa chỉ IP và cổng.]),
+      ([*Length-prefixed Framing*], [Kỹ thuật], [Đóng khung tiền tố độ dài], [Kỹ thuật ghi 4 byte độ dài gói trước dữ liệu để bộ nhận xác định đúng ranh giới thông điệp trên luồng TCP.]),
+      ([*Fingerprint*], [Xác thực khóa], [SHA-256 Fingerprint], [Mã băm SHA-256 của Public Key, dùng đối chiếu ngoài kênh nhằm phát hiện khóa bị thay thế.]),
     )
   )
 ]
