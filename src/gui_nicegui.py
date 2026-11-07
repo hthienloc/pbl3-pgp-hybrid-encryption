@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """
 Mô phỏng trực quan PGP Hybrid (RSA + AES-GCM) bằng NiceGUI.
-- Tích hợp giải thích chi tiết thuật toán trong Info popup (mapping với báo cáo PBL3).
-- Bổ sung sơ đồ trực quan đường đi dữ liệu (Dataflow Diagram) ở phía dưới,
-  tự động cập nhật trạng thái hoạt động theo từng bước phía trên.
-Mặc định: "Xin chào Cô Hạnh, bọn em là nhóm 7"
+- Bố cục:
+  1. 3 cột xử lý chính (Alice -> Kênh mạng -> Bob).
+  2. Sơ đồ tổng quan luồng dữ liệu 8 khối (đặt bên dưới các card).
+  3. Bảng điều khiển tiến trình số học luôn cố định (sticky/fixed) ở đáy màn hình:
+     - Giữ lịch sử 20 dòng gần nhất.
+     - Chiều cao được mở rộng (h-48), tự động cuộn xuống dòng mới nhất (auto-scroll).
+- Mặc định: "Xin chào Cô Hạnh, bọn em là nhóm 7"
 """
 
 import os
 import sys
+import asyncio
 from nicegui import ui
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -29,7 +33,10 @@ state = {
     "auth_tag": None,
     "enc_session_key": None,
     "recovered_key": None,
-    # Trạng thái tiến trình cho sơ đồ động (None | 'running' | 'success' | 'error')
+    "is_busy": False,
+    "log_history": [
+        "Hệ thống khởi tạo thành công. Nhấn vào các nút thao tác phía trên để quan sát tiến trình tính toán..."
+    ],
     "step_status": {
         "m": "ready",
         "k": "waiting",
@@ -46,6 +53,22 @@ state = {
 
 def notify(msg: str, color="indigo"):
     ui.notify(msg, color=color, position="bottom-right")
+
+
+def log_math(message: str):
+    """Ghi thêm thông điệp vào lịch sử tối đa 20 dòng và cuộn xuống đáy."""
+    lines = message.strip().split("\n")
+    for line in lines:
+        if line.strip():
+            state["log_history"].append(line)
+    # Giữ tối đa 20 dòng
+    if len(state["log_history"]) > 20:
+        state["log_history"] = state["log_history"][-20:]
+
+    full_log_text = "\n".join(state["log_history"])
+    lbl_math_console.set_text(full_log_text)
+    # Tự động cuộn xuống đáy container log
+    ui.run_javascript("const el = document.getElementById('math-log-scroll'); if (el) { el.scrollTop = el.scrollHeight; }")
 
 
 def show_info(title: str, content: str):
@@ -76,14 +99,13 @@ def show_info(title: str, content: str):
 
 # --- CẬP NHẬT GIAO DIỆN SƠ ĐỒ ĐƯỜNG ĐI DỮ LIỆU ---
 def update_diagram():
-    """Cập nhật màu sắc, badge và giá trị tóm tắt trên sơ đồ trực quan luồng dữ liệu."""
     st = state["step_status"]
 
     def style_node(status):
         if status == "success":
             return "border-emerald-500 bg-emerald-50 text-emerald-900 shadow-sm"
         elif status == "active":
-            return "border-blue-500 bg-blue-50 text-blue-900 shadow-md ring-2 ring-blue-300"
+            return "border-amber-500 bg-amber-50 text-amber-900 shadow-md ring-2 ring-amber-300"
         elif status == "error":
             return "border-rose-500 bg-rose-50 text-rose-900 shadow-sm"
         return "border-slate-200 bg-slate-50 text-slate-400 opacity-60"
@@ -113,7 +135,6 @@ def update_diagram():
         replace=f"p-2.5 rounded-lg border-2 text-center transition-all {style_node(st['m_out'])}"
     )
 
-    # Cập nhật nhãn phụ tóm tắt dưới mỗi khối
     lbl_flow_k.set_text(
         state["session_key"].hex()[:10] + "..." if state["session_key"] else "(chưa có)"
     )
@@ -133,23 +154,21 @@ def update_diagram():
     )
 
 
-# --- CÁC HÀM XỬ LÝ THEO BƯỚC ---
-def action_generate_keys():
-    state["bob_pub"], state["bob_priv"] = generate_rsa_keys(bits=256)
-    e, n = state["bob_pub"]
-    d, _ = state["bob_priv"]
+def set_busy(busy: bool, action_name=""):
+    state["is_busy"] = busy
+    if busy:
+        progress_bar.set_visibility(True)
+        lbl_exec_status.set_text(f"Đang xử lý: {action_name}...")
+    else:
+        progress_bar.set_visibility(False)
+        lbl_exec_status.set_text("Hệ thống sẵn sàng cho bước tiếp theo.")
 
-    lbl_bob_pub.set_text(f"e={e}, n={n}")
-    lbl_bob_priv.set_text(f"d={d}")
-    lbl_alice_bob_pub.set_text(f"e={e}, n={n}")
 
-    # Reset toàn bộ trạng thái dữ liệu
-    state["session_key"] = None
-    state["nonce"] = None
-    state["ciphertext"] = None
-    state["auth_tag"] = None
-    state["enc_session_key"] = None
-    state["recovered_key"] = None
+# --- CÁC HÀM XỬ LÝ THEO BƯỚC TOÁN HỌC ---
+async def action_generate_keys():
+    if state["is_busy"]:
+        return
+    set_busy(True, "Sinh cặp khóa RSA Bob (Miller-Rabin & Euclid mở rộng)")
 
     state["step_status"] = {
         "m": "ready",
@@ -162,6 +181,30 @@ def action_generate_keys():
         "aes_dec": "waiting",
         "m_out": "waiting",
     }
+    update_diagram()
+
+    log_math("[RSA KeyGen] 1. Sinh số nguyên tố lớn p, q (128 bits) qua Miller-Rabin test...")
+    await asyncio.sleep(0.3)
+
+    state["bob_pub"], state["bob_priv"] = generate_rsa_keys(bits=256)
+    e, n = state["bob_pub"]
+    d, _ = state["bob_priv"]
+
+    log_math(f"[RSA KeyGen] 2. Tính modulus n = p * q = {n}")
+    log_math(f"[RSA KeyGen] 3. Chọn số mũ Fermat e = {e}")
+    log_math(f"[RSA KeyGen] 4. Thuật toán Euclid mở rộng: e * d ≡ 1 mod φ(n) -> d = {d}")
+    log_math(f"[Hoàn tất] Public Key Bob: (e={e}, n) | Private Key Bob: d")
+
+    lbl_bob_pub.set_text(f"e={e}, n={n}")
+    lbl_bob_priv.set_text(f"d={d}")
+    lbl_alice_bob_pub.set_text(f"e={e}, n={n}")
+
+    state["session_key"] = None
+    state["nonce"] = None
+    state["ciphertext"] = None
+    state["auth_tag"] = None
+    state["enc_session_key"] = None
+    state["recovered_key"] = None
 
     lbl_session_key.set_text("—")
     lbl_aes_cipher.set_text("—")
@@ -172,20 +215,45 @@ def action_generate_keys():
     lbl_ghash_status.classes(replace="text-xs text-slate-400 font-mono")
     txt_decrypted_output.set_value("")
 
-    update_diagram()
+    set_busy(False)
     notify("Đã sinh cặp khóa RSA Bob (256-bit)", "teal")
 
 
-def action_generate_session_key():
-    state["session_key"] = os.urandom(16)
+async def action_generate_session_key():
+    """Thu thập entropy hệ thống và tạo chuỗi 128-bit khóa K."""
+    if state["is_busy"]:
+        return
+    set_busy(True, "Sinh khóa phiên K qua CSPRNG")
+
+    state["step_status"]["k"] = "active"
+    update_diagram()
+
+    log_math("[K-Gen] Thu thập entropy /dev/urandom cho 16 bytes (128 bits)...")
+    accumulated = bytearray()
+    for b_idx in range(16):
+        byte_val = os.urandom(1)
+        accumulated.extend(byte_val)
+        hex_preview = accumulated.hex() + " _" * (16 - len(accumulated))
+        lbl_session_key.set_text(hex_preview)
+        if (b_idx + 1) % 4 == 0 or b_idx == 15:
+            log_math(f"[K-Gen] Đang nạp block {b_idx+1}/16 bytes: {accumulated.hex()}")
+        await asyncio.sleep(0.04)
+
+    state["session_key"] = bytes(accumulated)
     lbl_session_key.set_text(state["session_key"].hex())
+    log_math(f"[K-Gen Hoàn tất] Session Key K (128-bit): {state['session_key'].hex()}")
+    log_math(f"[K-Gen] Giá trị nguyên m_K = int(K) = {int.from_bytes(state['session_key'], 'big')}")
 
     state["step_status"]["k"] = "success"
     update_diagram()
+    set_busy(False)
     notify("Đã tạo khóa phiên K (128-bit)", "blue")
 
 
-def action_aes_encrypt():
+async def action_aes_encrypt():
+    """Mã hóa dòng CTR Mode và tính băm GHASH trên trường Galois GF(2^128)."""
+    if state["is_busy"]:
+        return
     if not state["session_key"]:
         notify("Vui lòng sinh khóa K trước", "amber")
         return
@@ -195,10 +263,26 @@ def action_aes_encrypt():
         notify("Vui lòng nhập bản rõ M", "amber")
         return
 
+    set_busy(True, "Mã hóa AES-GCM (CTR Mode + GHASH)")
+    state["step_status"]["aes_enc"] = "active"
+    update_diagram()
+
     pt_bytes = pt.encode("utf-8")
+    log_math(f"[AES-GCM] Khởi tạo: Bản rõ |M| = {len(pt_bytes)} bytes. Sinh Nonce 12B...")
+    await asyncio.sleep(0.15)
+
     state["ciphertext"], state["nonce"], state["auth_tag"] = aes_gcm_encrypt(
         state["session_key"], pt_bytes
     )
+
+    log_math(f"[AES-CTR] Ghép Counter Block CB_0 = Nonce(12B) || 00000001(4B)")
+    log_math(f"[AES-CTR] Mã hóa dòng: C_i = P_i ⊕ AES_K(CB_i) -> C_data ({len(state['ciphertext'])}B)")
+    await asyncio.sleep(0.2)
+
+    log_math(f"[GHASH] Khóa băm xác thực H = AES_K(0^128)")
+    log_math(f"[GHASH] Phép nhân Horner trên GF(2^128): f(x) = x^128 + x^7 + x^2 + x + 1")
+    log_math(f"[GHASH] Thẻ chứng thực Tag = X_m ⊕ AES_K(CB_0) = {state['auth_tag'].hex()}")
+    await asyncio.sleep(0.15)
 
     lbl_aes_cipher.set_text(
         f"IV  : {state['nonce'].hex()}\n"
@@ -209,10 +293,14 @@ def action_aes_encrypt():
     state["step_status"]["m"] = "success"
     state["step_status"]["aes_enc"] = "success"
     update_diagram()
+    set_busy(False)
     notify("AES-GCM: Mã hóa thành công", "blue")
 
 
-def action_rsa_encrypt_key():
+async def action_rsa_encrypt_key():
+    """Thuật toán bình phương và nhân liên tiếp (Square-and-Multiply)."""
+    if state["is_busy"]:
+        return
     if not state["session_key"]:
         notify("Chưa có khóa phiên K", "amber")
         return
@@ -220,19 +308,43 @@ def action_rsa_encrypt_key():
         notify("Chưa có Public Key của Bob", "amber")
         return
 
+    set_busy(True, "Mã hóa RSA khóa K (Square-and-Multiply)")
+    state["step_status"]["rsa_enc"] = "active"
+    update_diagram()
+
+    e, n = state["bob_pub"]
     key_int = int.from_bytes(state["session_key"], byteorder="big")
+
+    log_math(f"[RSA Enc] Chuyển đổi khóa 16B: m_K = {key_int}")
+    log_math(f"[RSA Enc] Kiểm tra m_K < n: {key_int < n} (128 bits < 256 bits)")
+    await asyncio.sleep(0.2)
+
+    e_bin = bin(e)[2:]
+    log_math(f"[Square-and-Multiply] Số mũ Fermat e={e} ({len(e_bin)} bits): {e_bin}")
+    await asyncio.sleep(0.2)
+
     state["enc_session_key"] = rsa_encrypt(state["bob_pub"], key_int)
     lbl_rsa_cipher.set_text(f"0x{state['enc_session_key']:x}")
 
+    log_math(f"[RSA Enc Hoàn tất] C_key = (m_K)^{e} mod n -> 0x{state['enc_session_key']:x}")
+
     state["step_status"]["rsa_enc"] = "success"
     update_diagram()
+    set_busy(False)
     notify("RSA: Đã mã hóa khóa K", "blue")
 
 
-def action_send_packet():
+async def action_send_packet():
+    """Đóng khung TCP và truyền dẫn qua mạng."""
+    if state["is_busy"]:
+        return
     if not state["enc_session_key"] or not state["ciphertext"]:
         notify("Cần hoàn tất mã hóa trước", "amber")
         return
+
+    set_busy(True, "Đóng gói JSON Envelope & nạp vào TCP Socket")
+    state["step_status"]["network"] = "active"
+    update_diagram()
 
     packet_str = (
         "{\n"
@@ -242,25 +354,35 @@ def action_send_packet():
         f'  "Tag": "{state["auth_tag"].hex()}"\n'
         "}"
     )
+    payload_len = len(packet_str.encode("utf-8"))
+
+    log_math(f"[TCP Framing] JSON payload: {payload_len} bytes")
+    log_math(f"[TCP Framing] Header độ dài: [4B Header: 0x{payload_len:08x}] + [Payload]")
+    log_math(f"[Network] Đang truyền qua TCP Socket: Alice:Client -> :5000 -> Bob:Server...")
+    await asyncio.sleep(0.3)
+
     txt_network_packet.set_value(packet_str)
+    log_math(f"[Network Hoàn tất] Gói tin đã truyền an toàn trên kênh mạng TCP.")
 
     state["step_status"]["network"] = "success"
     update_diagram()
+    set_busy(False)
     notify("Đã truyền gói tin lên mạng", "purple")
 
 
-def action_simulate_tamper():
+async def action_simulate_tamper():
+    if state["is_busy"]:
+        return
     if not state["ciphertext"]:
         notify("Chưa có gói tin", "amber")
         return
 
-    # Sửa 1 byte đầu tiên của bản mã Ciphertext
     tampered = bytearray(state["ciphertext"])
     tampered[0] ^= 0xFF
     state["ciphertext"] = bytes(tampered)
 
     packet_str = (
-        "// [ĐÃ SỬA ĐỔI 1 BYTE TRONG C_DATA]\n"
+        "// [ĐÃ SỬA ĐỔI 1 BYTE TRONG C_DATA: BIT-FLIP ATTACK]\n"
         "{\n"
         f'  "C_key": "0x{state["enc_session_key"]:x}",\n'
         f'  "IV": "{state["nonce"].hex()}",\n'
@@ -269,30 +391,64 @@ def action_simulate_tamper():
         "}"
     )
     txt_network_packet.set_value(packet_str)
+
+    log_math("[Tấn công MITM] Kẻ tấn công can thiệp trên đường truyền!")
+    log_math("Thực hiện phép Bit-Flipping: C_data[0] = C_data[0] ⊕ 0xFF")
+    log_math("Ciphertext đã bị sửa đổi. Tag GHASH vẫn giữ nguyên.")
 
     state["step_status"]["network"] = "error"
     update_diagram()
     notify("Đã sửa bit trong C_data", "red")
 
 
-def action_rsa_decrypt_key():
+async def action_rsa_decrypt_key():
+    """Giải mã RSA bằng Private Key của Bob theo Định lý Euler."""
+    if state["is_busy"]:
+        return
     if not state["enc_session_key"]:
         notify("Chưa có gói tin", "amber")
         return
 
+    set_busy(True, "Giải mã RSA Bob: (C_key)^d mod n")
+    state["step_status"]["rsa_dec"] = "active"
+    update_diagram()
+
+    d, n = state["bob_priv"]
+    log_math(f"[RSA Dec] Trích xuất C_key = 0x{state['enc_session_key']:x}")
+    log_math(f"[RSA Dec] Khóa bí mật Bob: d = {d}")
+    log_math(f"[RSA Dec] Lũy thừa mô-đun: m_K' = (C_key)^d mod n qua Square-and-Multiply...")
+    await asyncio.sleep(0.3)
+
     recovered_int = rsa_decrypt(state["bob_priv"], state["enc_session_key"])
     state["recovered_key"] = (recovered_int & ((1 << 128) - 1)).to_bytes(16, byteorder="big")
+
+    log_math(f"[Định lý Euler] (C_key)^d = m_K^(1 + k*φ(n)) ≡ m_K mod n")
+    log_math(f"[RSA Dec] Giá trị số học: {recovered_int}")
+    log_math(f"[RSA Dec Hoàn tất] Khôi phục Session Key K: {state['recovered_key'].hex()}")
+
     lbl_recovered_key.set_text(state["recovered_key"].hex())
 
     state["step_status"]["rsa_dec"] = "success"
     update_diagram()
+    set_busy(False)
     notify("RSA: Đã khôi phục khóa K", "teal")
 
 
-def action_aes_decrypt_data():
+async def action_aes_decrypt_data():
+    """Đối chiếu GHASH Tag trên trường Galois và giải mã bản rõ."""
+    if state["is_busy"]:
+        return
     if not state["recovered_key"]:
         notify("Chưa khôi phục khóa K", "amber")
         return
+
+    set_busy(True, "Đối chiếu GHASH Tag & Giải mã AES-GCM")
+    state["step_status"]["aes_dec"] = "active"
+    update_diagram()
+
+    log_math(f"[Xác thực AEAD] Nạp khóa phiên K: {state['recovered_key'].hex()}")
+    log_math(f"[Xác thực AEAD] Tính lại mã kiểm tra GHASH_computed trên GF(2^128)...")
+    await asyncio.sleep(0.3)
 
     try:
         pt_bytes = aes_gcm_decrypt(
@@ -307,30 +463,40 @@ def action_aes_decrypt_data():
         lbl_ghash_status.set_text("HỢP LỆ (Khớp Auth Tag)")
         lbl_ghash_status.classes(replace="text-xs text-emerald-600 font-bold")
 
+        log_math(f"[GHASH Xác thực] GHASH_computed == Tag ({state['auth_tag'].hex()}) -> TRÙNG KHỚP!")
+        log_math(f"[AES-CTR Dec] P_i = C_i ⊕ AES_K(CB_i) -> Khôi phục chuỗi byte UTF-8")
+        log_math(f"[Kết quả] Bản rõ M' = \"{decrypted_text}\"")
+
         state["step_status"]["aes_dec"] = "success"
         state["step_status"]["m_out"] = "success"
         update_diagram()
+        set_busy(False)
         notify("Xác thực GHASH thành công", "emerald")
     except Exception as e:
         txt_decrypted_output.set_value(f"[LỖI: {e}]")
         lbl_ghash_status.set_text(f"LỖI: {e}")
         lbl_ghash_status.classes(replace="text-xs text-rose-600 font-bold")
 
+        log_math(f"[CẢNH BÁO TOÀN VẸN] GHASH_computed != Tag_received!")
+        log_math(f"Ngoại lệ phát hiện: {e} -> Hủy gói tin, không xuất bản rõ.")
+
         state["step_status"]["aes_dec"] = "error"
         state["step_status"]["m_out"] = "error"
         update_diagram()
+        set_busy(False)
         notify("Kiểm tra Tag thất bại", "red")
 
 
 # --- XÂY DỰNG GIAO DIỆN (UI SETUP) ---
-ui.query("body").style("background-color: #f8fafc;")
+# Thêm padding bottom (pb-64) cho body để nội dung không bao giờ bị bảng cố định ở đáy che khuất
+ui.query("body").style("background-color: #f8fafc; padding-bottom: 16rem;")
 
 ui.add_head_html(r"""
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
 """)
 
 with ui.header().classes(
-    "bg-slate-900 text-white px-5 py-2.5 flex items-center justify-between shadow-sm"
+    "bg-slate-900 text-white px-5 py-2.5 flex items-center justify-between shadow-sm sticky top-0 z-40"
 ):
     with ui.row().classes("items-center gap-2"):
         ui.icon("lock", size="1.5rem").classes("text-indigo-400")
@@ -437,7 +603,7 @@ Theo quy trình chuẩn tại Mục 3 và hàm `alice_encrypt_package` (Mục 7.
                     on_click=lambda: show_info(
                         "Mục 7.2: Cơ Sở Toán Học AES-GCM (AEAD)",
                         r"""
-AES-GCM kết hợp hai kỹ thuật số học chính xác (Mục 7.2 trong báo cáo):
+AES-GCM kết hợp hai kỹ thuật số học (Mục 7.2 trong báo cáo):
 
 1. **Mã hóa dòng CTR Mode:** Bản rõ $P_i$ được XOR với dòng khóa giả ngẫu nhiên:
    $$C_i = P_i \oplus \text{AES}_K(\text{CB}_i)$$
@@ -541,7 +707,7 @@ Theo kiến trúc giao thức truyền thông tại Mục 7.1 và Mục 9 trong 
   $$\text{Payload} = \{C_{\text{key}}, \text{IV}, C_{\text{data}}, \text{Tag}\}$$
 - **Đóng khung TCP (Framing):** Dữ liệu được nạp vào kênh Socket TCP dưới dạng chuỗi byte với cơ chế Length-Prefixed:
   $$\text{Frame} = [4 \text{ bytes Header độ dài}] + [\text{JSON Payload (utf-8)}]$$
-- **Truyền dẫn:** Gói tin an toàn truyền qua môi trường mạng không tin cậy. Dù đối phương nghe lén (Sniffing), không thể đọc được $K$ hay $M$.
+- **Truyền dẫn:** Gói tin truyền an toàn qua môi trường mạng không tin cậy. Dù đối phương nghe lén (Sniffing), không thể đọc được $K$ hay $M$.
                         """,
                     ),
                 ).props("flat round dense size=xs").classes(
@@ -687,9 +853,9 @@ Cơ chế kiểm soát lỗi:
         )
 
 
-# --- KHU VỰC DƯỚI: SƠ ĐỒ ĐƯỜNG ĐI VÀ BIẾN ĐỔI DỮ LIỆU ĐỘNG (DATAFLOW DIAGRAM) ---
+# --- KHU VỰC DƯỚI 1: SƠ ĐỒ ĐƯỜNG ĐI VÀ BIẾN ĐỔI DỮ LIỆU ĐỘNG (DATAFLOW DIAGRAM) ---
 with ui.card().classes(
-    "w-full max-w-7xl mx-auto mt-2 mb-6 p-4 bg-white rounded-xl shadow-sm border border-slate-200"
+    "w-full max-w-7xl mx-auto mt-2 mb-4 p-4 bg-white rounded-xl shadow-sm border border-slate-200"
 ):
     with ui.row().classes(
         "items-center justify-between w-full pb-2 mb-3 border-b border-slate-100"
@@ -701,7 +867,7 @@ with ui.card().classes(
             ).classes("text-sm font-bold text-slate-800")
             ui.badge("Tương tác đồng bộ", color="indigo").classes("text-xs")
         ui.label(
-            "Quy ước: Viền xanh = Đã hoàn thành | Viền nét đứt = Khóa | Viền đỏ = Lỗi can thiệp"
+            "Quy ước: Vàng = Đang xử lý | Xanh lá = Đã hoàn thành | Viền nét đứt = Khóa | Viền đỏ = Lỗi can thiệp"
         ).classes("text-xs text-slate-400")
 
     # GRID CÁC KHỐI SƠ ĐỒ LUỒNG DỮ LIỆU
@@ -797,7 +963,36 @@ with ui.card().classes(
                 ui.label("M' = M").classes("text-[10px] text-slate-500")
 
 
-action_generate_keys()
+# --- KHU VỰC DƯỚI 2: BẢNG TIẾN TRÌNH TOÁN HỌC DÁN CHẶT ĐÁY MÀN HÌNH (STICKY/FIXED BOTTOM CONSOLE) ---
+with ui.card().classes(
+    "fixed bottom-0 left-0 right-0 z-50 w-full max-w-7xl mx-auto p-3 bg-slate-900 text-white rounded-t-xl shadow-2xl border-t-2 border-indigo-500"
+):
+    with ui.row().classes("items-center justify-between w-full pb-1 border-b border-slate-800"):
+        with ui.row().classes("items-center gap-2"):
+            ui.icon("terminal", size="1.2rem").classes("text-emerald-400")
+            ui.label("Nhật ký tiến trình số học thời gian thực (Lịch sử 20 sự kiện gần nhất)").classes(
+                "text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider"
+            )
+        lbl_exec_status = ui.label("Hệ thống sẵn sàng cho bước tiếp theo.").classes(
+            "text-xs font-mono text-slate-400"
+        )
+    progress_bar = ui.linear_progress().props("indeterminate").classes("w-full my-1")
+    progress_bar.set_visibility(False)
+
+    # Container cuộn riêng biệt có ID math-log-scroll, chiều cao h-44 (~176px)
+    with ui.scroll_area().classes("w-full h-44 pr-2").props("id=math-log-scroll"):
+        lbl_math_console = ui.label("\n".join(state["log_history"])).classes(
+            "text-xs font-mono text-slate-300 whitespace-pre-wrap leading-relaxed"
+        )
+
+
+# Chạy hàm khởi tạo cặp khóa ban đầu đồng bộ
+state["bob_pub"], state["bob_priv"] = generate_rsa_keys(bits=256)
+e, n = state["bob_pub"]
+d, _ = state["bob_priv"]
+lbl_bob_pub.set_text(f"e={e}, n={n}")
+lbl_bob_priv.set_text(f"d={d}")
+lbl_alice_bob_pub.set_text(f"e={e}, n={n}")
 
 if __name__ in {"__main__", "__mp_main__"}:
     ui.run(title="PGP Hybrid Simulator", port=8080, reload=False, show=False)
