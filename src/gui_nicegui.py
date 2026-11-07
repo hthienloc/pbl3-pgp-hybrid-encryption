@@ -4,9 +4,10 @@ Mô phỏng trực quan PGP Hybrid (RSA + AES-GCM) bằng NiceGUI.
 - Bố cục:
   1. 3 cột xử lý chính (Alice -> Kênh mạng -> Bob).
   2. Sơ đồ tổng quan luồng dữ liệu 8 khối (đặt bên dưới các card).
-  3. Bảng điều khiển tiến trình số học luôn cố định (sticky/fixed) ở đáy màn hình:
+  3. Bảng điều khiển tiến trình số học dán chặt đáy màn hình (Fixed Bottom Bar):
+     - Có thanh kéo thả (Resize Handle) cho phép kéo thay đổi chiều cao tự do (100px - 600px).
      - Giữ lịch sử 20 dòng gần nhất.
-     - Chiều cao được mở rộng (h-48), tự động cuộn xuống dòng mới nhất (auto-scroll).
+     - Tự động cuộn xuống dòng mới nhất (auto-scroll).
 - Mặc định: "Xin chào Cô Hạnh, bọn em là nhóm 7"
 """
 
@@ -68,7 +69,9 @@ def log_math(message: str):
     full_log_text = "\n".join(state["log_history"])
     lbl_math_console.set_text(full_log_text)
     # Tự động cuộn xuống đáy container log
-    ui.run_javascript("const el = document.getElementById('math-log-scroll'); if (el) { el.scrollTop = el.scrollHeight; }")
+    ui.run_javascript(
+        "const el = document.getElementById('math-log-scroll'); if (el) { el.scrollTop = el.scrollHeight; }"
+    )
 
 
 def show_info(title: str, content: str):
@@ -488,11 +491,77 @@ async def action_aes_decrypt_data():
 
 
 # --- XÂY DỰNG GIAO DIỆN (UI SETUP) ---
-# Thêm padding bottom (pb-64) cho body để nội dung không bao giờ bị bảng cố định ở đáy che khuất
-ui.query("body").style("background-color: #f8fafc; padding-bottom: 16rem;")
+ui.query("body").style("background-color: #f8fafc; padding-bottom: 22rem;")
 
 ui.add_head_html(r"""
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<style>
+/* CSS cho thanh kéo thả resize console ở đáy */
+.resize-bar {
+    width: 100%;
+    height: 8px;
+    cursor: ns-resize;
+    background: transparent;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    user-select: none;
+    touch-action: none;
+}
+.resize-bar:hover .resize-line {
+    background-color: #818cf8;
+}
+.resize-line {
+    width: 48px;
+    height: 4px;
+    border-radius: 9999px;
+    background-color: #64748b;
+    transition: background-color 0.2s;
+}
+</style>
+<script>
+// Logic JavaScript kéo thả thay đổi chiều cao của Terminal Panel
+window.initConsoleResize = function() {
+    const handle = document.getElementById('console-resize-handle');
+    const panel = document.getElementById('resizable-terminal-panel');
+    const scrollContainer = document.getElementById('math-log-scroll');
+    if (!handle || !panel || !scrollContainer) return;
+
+    let isResizing = false;
+    let startY = 0;
+    let startHeight = 0;
+
+    handle.addEventListener('mousedown', function(e) {
+        isResizing = true;
+        startY = e.clientY;
+        startHeight = panel.offsetHeight;
+        document.body.style.cursor = 'ns-resize';
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', function(e) {
+        if (!isResizing) return;
+        const delta = startY - e.clientY; // Kéo lên là tăng chiều cao
+        let newHeight = startHeight + delta;
+        if (newHeight < 120) newHeight = 120;
+        if (newHeight > 650) newHeight = 650;
+        panel.style.height = newHeight + 'px';
+        scrollContainer.style.height = (newHeight - 75) + 'px';
+        document.body.style.paddingBottom = (newHeight + 30) + 'px';
+    });
+
+    document.addEventListener('mouseup', function() {
+        if (isResizing) {
+            isResizing = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        }
+    });
+};
+window.addEventListener('DOMContentLoaded', window.initConsoleResize);
+setTimeout(window.initConsoleResize, 800);
+</script>
 """)
 
 with ui.header().classes(
@@ -963,24 +1032,32 @@ with ui.card().classes(
                 ui.label("M' = M").classes("text-[10px] text-slate-500")
 
 
-# --- KHU VỰC DƯỚI 2: BẢNG TIẾN TRÌNH TOÁN HỌC DÁN CHẶT ĐÁY MÀN HÌNH (STICKY/FIXED BOTTOM CONSOLE) ---
+# --- KHU VỰC DƯỚI 2: BẢNG TIẾN TRÌNH TOÁN HỌC CÓ KHẢ NĂNG KÉO THẢ RESIZE (RESIZABLE BOTTOM CONSOLE) ---
 with ui.card().classes(
-    "fixed bottom-0 left-0 right-0 z-50 w-full max-w-7xl mx-auto p-3 bg-slate-900 text-white rounded-t-xl shadow-2xl border-t-2 border-indigo-500"
-):
+    "fixed bottom-0 left-0 right-0 z-50 w-full max-w-7xl mx-auto px-3 pb-2 pt-1 bg-slate-900 text-white rounded-t-xl shadow-2xl border-t-2 border-indigo-500 transition-none"
+).style("height: 220px; min-height: 120px; max-height: 650px;").props("id=resizable-terminal-panel"):
+
+    # Thanh tay cầm (Drag Handle) để rê chuột kéo lên/xuống thay đổi chiều cao
+    with ui.element("div").classes("resize-bar").props("id=console-resize-handle title='Kéo lên hoặc xuống để thay đổi kích thước terminal'"):
+        ui.element("div").classes("resize-line")
+
     with ui.row().classes("items-center justify-between w-full pb-1 border-b border-slate-800"):
         with ui.row().classes("items-center gap-2"):
             ui.icon("terminal", size="1.2rem").classes("text-emerald-400")
             ui.label("Nhật ký tiến trình số học thời gian thực (Lịch sử 20 sự kiện gần nhất)").classes(
                 "text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider"
             )
-        lbl_exec_status = ui.label("Hệ thống sẵn sàng cho bước tiếp theo.").classes(
-            "text-xs font-mono text-slate-400"
-        )
+        with ui.row().classes("items-center gap-2"):
+            ui.icon("unfold_more", size="1rem").classes("text-slate-500")
+            lbl_exec_status = ui.label("Hệ thống sẵn sàng cho bước tiếp theo.").classes(
+                "text-xs font-mono text-slate-400"
+            )
+
     progress_bar = ui.linear_progress().props("indeterminate").classes("w-full my-1")
     progress_bar.set_visibility(False)
 
-    # Container cuộn riêng biệt có ID math-log-scroll, chiều cao h-44 (~176px)
-    with ui.scroll_area().classes("w-full h-44 pr-2").props("id=math-log-scroll"):
+    # Container cuộn co giãn linh hoạt theo chiều cao cha
+    with ui.scroll_area().classes("w-full pr-2").style("height: 145px;").props("id=math-log-scroll"):
         lbl_math_console = ui.label("\n".join(state["log_history"])).classes(
             "text-xs font-mono text-slate-300 whitespace-pre-wrap leading-relaxed"
         )
