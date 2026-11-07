@@ -50,7 +50,15 @@ TEST CASE 03: Giải mã bằng Private Key không hợp lệ (Khóa của Eve)
 =================================================================
 ```
 
+== Giao diện mô phỏng trực quan từng bước (GUI Simulator)
+
+Bên cạnh giao diện dòng lệnh, nhóm phát triển ứng dụng mô phỏng trực quan trên nền tảng web hiện đại sử dụng NiceGUI (`src/gui_nicegui.py`, truy cập tại cổng `http://localhost:8080`) nhằm trực quan hóa luồng biến đổi dữ liệu qua từng khối xử lý theo thời gian thực:
+
+1. *Phía Alice:* Nhập bản rõ $M$, lần lượt thực hiện sinh Session Key $K$ (128-bit), mã hóa AES-GCM $(C_("data"), "Tag")$ và mã hóa RSA cho $K$ thành $C_("key")$.
+2. *Kênh mạng:* Đóng gói JSON Envelope $\{C_("key"), "IV", C_("data"), "Tag"\}$. Hỗ trợ nút *Sửa bit (Tấn công)* nhằm kiểm thử tính toàn vẹn ngay trên đường truyền.
+3. *Phía Bob:* Nhận gói tin, giải mã RSA thu hồi $K$, đối chiếu Auth Tag (GHASH) và giải mã $M$. Nếu phát hiện sai khác bit, hệ thống hủy gói và báo lỗi lập tức.
+
 #import "../components.typ": info-box
 #info-box(title: "Nhận xét kết quả kiểm thử")[
-  Ba tình huống kiểm thử trên cho thấy mô hình kết hợp RSA và AES-GCM đáp ứng tính bí mật của nội dung thông điệp trên đường truyền, đồng thời phát hiện được các can thiệp làm sai lệch dữ liệu.
+  Ba tình huống kiểm thử trên cho thấy mô hình kết hợp RSA và AES-GCM đáp ứng tính bí mật của nội dung thông điệp trên đường truyền, đồng thời phát hiện được các can thiệp làm sai lệch dữ liệu. Ứng dụng GUI hỗ trợ quan sát tường minh trạng thái dữ liệu trung gian qua từng bước mà không cần đọc mã nguồn.
 ]

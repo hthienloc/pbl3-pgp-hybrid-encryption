@@ -21,8 +21,29 @@
       rankdir=TB;
       nodesep=0.35;
       ranksep=0.38;
-      node [shape=box, style="rounded,filled", fillcolor="white", penwidth=0.8, margin="0.10,0.06"];
+      node [penwidth=0.8, margin="0.08,0.05"];
       edge [penwidth=0.8, arrowsize=0.7, color="black"];
+
+      // Quy ước hình dạng phân định Input/Output, Khóa và Khối xử lý
+      // Input / Output dữ liệu: hình bình hành (parallelogram)
+      m        [shape=parallelogram, style="filled", fillcolor="#ffffff"];
+      cdata    [shape=parallelogram, style="filled", fillcolor="#ffffff"];
+      ckey     [shape=parallelogram, style="filled", fillcolor="#ffffff"];
+      b_cdata  [shape=parallelogram, style="filled", fillcolor="#ffffff"];
+      b_ckey   [shape=parallelogram, style="filled", fillcolor="#ffffff"];
+      m_out    [shape=parallelogram, style="filled", fillcolor="#ffffff"];
+
+      // Khóa và tham số mã hóa: hình ellipse viền nét đứt
+      key      [shape=ellipse, style="dashed,filled", fillcolor="#ffffff"];
+      pub      [shape=ellipse, style="dashed,filled", fillcolor="#ffffff"];
+      priv     [shape=ellipse, style="dashed,filled", fillcolor="#ffffff"];
+      key_out  [shape=ellipse, style="dashed,filled", fillcolor="#ffffff"];
+
+      // Khối xử lý logic (Logic Processing): hình hộp góc bo tròn có màu nền
+      aes_enc  [shape=box, style="rounded,filled", fillcolor="#f1f5f9"];
+      rsa_enc  [shape=box, style="rounded,filled", fillcolor="#f1f5f9"];
+      rsa_dec  [shape=box, style="rounded,filled", fillcolor="#f1f5f9"];
+      aes_dec  [shape=box, style="rounded,filled", fillcolor="#f1f5f9"];
 
       subgraph cluster_alice {
         label="Phía Alice (Mã hóa)";
@@ -31,12 +52,12 @@
         color="#64748b";
         fontsize=10;
         { rank=same; m; key; pub; }
-        m -> aes_enc;
-        key -> aes_enc;
-        key -> rsa_enc;
-        pub -> rsa_enc;
-        aes_enc -> cdata;
-        rsa_enc -> ckey;
+        m -> aes_enc         [style=solid];
+        key -> aes_enc       [style=dashed];
+        key -> rsa_enc       [style=dashed];
+        pub -> rsa_enc       [style=dashed];
+        aes_enc -> cdata     [style=solid];
+        rsa_enc -> ckey      [style=solid];
       }
 
       subgraph cluster_bob {
@@ -46,16 +67,16 @@
         color="#64748b";
         fontsize=10;
         { rank=same; b_cdata; b_ckey; priv; }
-        b_cdata -> aes_dec;
-        b_ckey -> rsa_dec;
-        priv -> rsa_dec;
-        rsa_dec -> key_out;
-        key_out -> aes_dec;
-        aes_dec -> m_out;
+        b_cdata -> aes_dec   [style=solid];
+        b_ckey -> rsa_dec    [style=solid];
+        priv -> rsa_dec      [style=dashed];
+        rsa_dec -> key_out   [style=dashed];
+        key_out -> aes_dec   [style=dashed];
+        aes_dec -> m_out     [style=solid];
       }
 
-      cdata -> b_cdata [style=dashed, label=" Kênh mạng"];
-      ckey -> b_ckey [style=dashed];
+      cdata -> b_cdata       [style=dotted, label=" Kênh mạng"];
+      ckey -> b_ckey         [style=dotted];
     }
     ```,
     labels: (
@@ -125,8 +146,22 @@
       rankdir=TB;
       nodesep=0.45;
       ranksep=0.38;
-      node [shape=box, style="rounded,filled", fillcolor="white", penwidth=0.8, margin="0.10,0.06"];
+      node [penwidth=0.8, margin="0.08,0.05"];
       edge [penwidth=0.8, arrowsize=0.7, color="black"];
+
+      // Input / Output dữ liệu: hình bình hành
+      m      [shape=parallelogram, style="filled", fillcolor="#ffffff"];
+      c      [shape=parallelogram, style="filled", fillcolor="#ffffff"];
+      c_bob  [shape=parallelogram, style="filled", fillcolor="#ffffff"];
+      m2     [shape=parallelogram, style="filled", fillcolor="#ffffff"];
+
+      // Khóa bí mật và công khai: hình ellipse viền nét đứt
+      pub    [shape=ellipse, style="dashed,filled", fillcolor="#ffffff"];
+      priv   [shape=ellipse, style="dashed,filled", fillcolor="#ffffff"];
+
+      // Khối xử lý logic (Logic Processing): hình hộp góc bo tròn có màu nền
+      enc    [shape=box, style="rounded,filled", fillcolor="#f1f5f9"];
+      dec    [shape=box, style="rounded,filled", fillcolor="#f1f5f9"];
 
       subgraph cluster_alice {
         label="Alice (Bên gửi)";
@@ -134,9 +169,9 @@
         color="#64748b";
         fontsize=10;
         { rank=same; m; pub; }
-        m -> enc;
-        pub -> enc;
-        enc -> c;
+        m -> enc        [style=solid];
+        pub -> enc      [style=dashed];
+        enc -> c        [style=solid];
       }
 
       subgraph cluster_bob {
@@ -145,12 +180,12 @@
         color="#64748b";
         fontsize=10;
         { rank=same; c_bob; priv; }
-        c_bob -> dec;
-        priv -> dec;
-        dec -> m2;
+        c_bob -> dec    [style=solid];
+        priv -> dec     [style=dashed];
+        dec -> m2       [style=solid];
       }
 
-      c -> c_bob [style=dashed, label=" Gửi qua mạng"];
+      c -> c_bob        [style=dotted, label=" Gửi qua mạng"];
     }
     ```,
     labels: (
