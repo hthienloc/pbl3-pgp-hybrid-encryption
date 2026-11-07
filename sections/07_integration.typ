@@ -33,7 +33,7 @@ Khóa băm xác thực $H = "AES"_K (0^(128))$ được dùng để thực hiệ
 $ X_i = (X_(i-1) xor C_i) dot H $
 Giá trị Authentication Tag cuối cùng:
 $ "Tag" = X_m xor "AES"_K ("CB"_0) $
-Nếu kẻ tấn công can thiệp bất kỳ bit nào trên Ciphertext ($C_i arrow.r C'_i$), giá trị băm $X'_m$ sẽ biến đổi hoàn toàn theo tính chất khuếch tán của trường Galois, làm phép so sánh Tag tại phía Bob thất bại lập tức.
+Nếu kẻ tấn công can thiệp bất kỳ bit nào trên Ciphertext ($C_i arrow.r C'_i$), giá trị băm $X'_m$ sẽ thay đổi theo tính chất khuếch tán của trường Galois, làm phép so sánh Tag tại phía Bob thất bại.
 
 == Phân công nhiệm vụ hai phía
 

@@ -342,11 +342,11 @@ with ui.header().classes(
                 "Mục 2 & Mục 7: Tổng Quan Kiến Trúc Mã Hóa Lai PGP",
                 r"""
 ### 1. Bài toán và Động lực thiết kế (Mục 2 trong báo cáo)
-- **Mã hóa đối xứng (AES-128):** Tốc độ phần cứng cực nhanh, xử lý dữ liệu lớn không giới hạn nhưng tồn tại nghịch lý **phải chia sẻ khóa bí mật $K$ từ trước qua kênh bảo mật**.
-- **Mã hóa bất đối xứng (RSA):** Cho phép trao đổi dữ liệu an toàn qua kênh công khai nhờ cặp khóa $(e, d)$, nhưng thuật toán tính lũy thừa mô-đun trên số nguyên lớn $C = M^e \pmod n$ tốn nhiều tài nguyên tính toán (chậm gấp ~1000 lần AES), không khả thi cho dữ liệu dung lượng lớn.
+- **Mã hóa đối xứng (AES-128):** Tốc độ xử lý cao, phù hợp với dữ liệu lớn nhưng yêu cầu chia sẻ trước khóa bí mật $K$ qua kênh an toàn.
+- **Mã hóa bất đối xứng (RSA):** Trao đổi dữ liệu an toàn qua kênh công khai bằng cặp khóa $(e, d)$, nhưng phép tính lũy thừa mô-đun trên số nguyên lớn $C = M^e \pmod n$ tiêu tốn tài nguyên, không phù hợp để mã hóa trực tiếp khối dữ liệu dung lượng lớn.
 - **Giải pháp Hybrid PGP:** 
   $$\text{PGP Packet} = \{\text{RSA}_{e_B}(K), \quad \text{AES-GCM}_K(M)\}$$
-  Alice sinh khóa phiên ngẫu nhiên $K$ 128-bit. AES dùng $K$ mã hóa nội dung $M$, còn RSA Bob bảo vệ duy nhất 16 bytes của $K$.
+  Alice sinh khóa phiên ngẫu nhiên $K$ 128-bit. AES dùng $K$ mã hóa nội dung $M$, còn RSA phía Bob bảo vệ 16 bytes của $K$.
 
 ### 2. Định dạng gói tin trên mạng (Mục 7.1 - Packet Framing)
 Gói tin JSON Envelope đóng gói 4 trường độc lập:
@@ -447,7 +447,7 @@ AES-GCM kết hợp hai kỹ thuật số học chính xác (Mục 7.2 trong bá
    Dùng khóa băm $H = \text{AES}_K(0^{128})$ để thực hiện phép nhân Horner liên tiếp:
    $$X_i = (X_{i-1} \oplus C_i) \cdot H$$
    $$\text{Tag} = X_m \oplus \text{AES}_K(\text{CB}_0)$$
-Nếu bất kỳ bit nào của $C_i$ bị thay đổi, $X_m$ sẽ biến đổi hoàn toàn và phép xác thực tại Bob sẽ thất bại lập tức.
+Nếu bất kỳ bit nào của $C_i$ bị thay đổi, giá trị $X_m$ sẽ thay đổi và phép kiểm tra Tag tại Bob sẽ thất bại.
                         """,
                     ),
                 ).props("flat round dense size=xs").classes(
@@ -515,7 +515,7 @@ Theo kiến trúc giao thức truyền thông trong `PGP_RSA_AES_Socket_3_files`
 
 - **Framing giao thức:** Sử dụng kỹ thuật Length-Prefixed Framing:
   `[4 Bytes Header độ dài Payload] + [JSON Envelope utf-8]`
-  giúp bên nhận Bob giải quyết triệt để bài toán phân mảnh byte stream (TCP Fragmentation).
+  giúp bên nhận Bob xử lý hiện tượng phân mảnh byte stream (TCP Fragmentation).
 - **Tính an toàn trên đường truyền:**
   Kẻ tấn công thụ động (Sniffing) chỉ nhìn thấy $C_{\text{key}}$, Nonce, $C_{\text{data}}$ và $\text{Tag}$. Do bài toán RSA phân tích thừa số nguyên tố lớn, không thể suy ra $K$; do bảo mật AES-GCM, không thể suy ra $M$.
                         """,
@@ -563,7 +563,7 @@ Minh họa kịch bản kiểm thử Test Case 02 trong báo cáo (Mục 8):
   $$C'_0 = C_0 \oplus \text{0xFF}$$
 - **Nguyên lý phát hiện:** Trong chế độ CTR thuần túy, việc đảo bit chỉ làm sai lệch byte tương ứng của bản rõ. Tuy nhiên, trong **AES-GCM**, sự biến đổi của $C'_0$ khiến phép nhân trên trường Galois:
   $$X'_m \neq X_m$$
-  khiến $\text{Tag}' \neq \text{Tag}$. Bộ giải mã của Bob sẽ phát hiện ngay sự sai khác và lập tức ném lỗi ngoại lệ, bảo vệ tuyệt đối tính toàn vẹn.
+  khiến $\text{Tag}' \neq \text{Tag}$. Bộ giải mã của Bob sẽ phát hiện sự sai khác và ném ngoại lệ, bảo đảm tính toàn vẹn dữ liệu.
                         """,
                     ),
                 ).props("flat round dense size=xs").classes(
@@ -638,7 +638,7 @@ Chứng minh tính đúng đắn dựa trên Định lý Euler (Mục 4.2):
    $$m_K' = (C_{\text{key}})^{d_B} \pmod n = (m_K^{e_B})^{d_B} \pmod n = m_K^{1 + k \phi(n)} \pmod n$$
 3. Theo Định lý Euler, $m_K^{\phi(n)} \equiv 1 \pmod n$, do đó:
    $$m_K' \equiv m_K \cdot (1)^k \equiv m_K \pmod n$$
-Khóa phiên $K$ được khôi phục chính xác 100%.
+Khóa phiên $K$ được khôi phục chính xác.
                         """,
                     ),
                 ).props("flat round dense size=xs").classes(
@@ -654,13 +654,13 @@ Khóa phiên $K$ được khôi phục chính xác 100%.
                     on_click=lambda: show_info(
                         "Mục 7.2: Xác Thực GHASH Và Giải Mã AES",
                         r"""
-Cơ chế kiểm soát lỗi nghiêm ngặt:
+Cơ chế kiểm soát lỗi:
 
-- Bộ giải mã AES-GCM không tiến hành trả về bản rõ trước khi vượt qua kiểm tra thẻ chứng thực $\text{Tag}$.
+- Bộ giải mã AES-GCM chỉ trả về bản rõ khi giá trị $\text{Tag}$ hợp lệ.
 - Nếu dữ liệu bị sửa đổi (như trong nút tấn công), hàm giải mã ném ngoại lệ `ValueError: MAC check failed`.
-- Nhờ vậy, phía nhận Bob được đảm bảo 2 tầng an ninh:
-  1. **Confidentiality (Tính bí mật):** Kẻ nghe trộm không đọc được dữ liệu.
-  2. **Integrity (Tính toàn vẹn):** Kẻ can thiệp không thể giả mạo gói tin mà không bị phát hiện.
+- Nhờ vậy, phía nhận Bob đảm bảo 2 thuộc tính:
+  1. **Tính bí mật (Confidentiality):** Kẻ nghe trộm không đọc được dữ liệu.
+  2. **Tính toàn vẹn (Integrity):** Phát hiện can thiệp hoặc sửa đổi dữ liệu trên đường truyền.
                         """,
                     ),
                 ).props("flat round dense size=xs").classes(

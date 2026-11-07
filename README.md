@@ -16,7 +16,7 @@ Báo cáo tiến độ và mã nguồn mô phỏng cơ chế **Mã hóa lai (Hyb
 
 Trong môi trường truyền thông mạng, việc truyền tải dữ liệu an toàn đòi hỏi đảm bảo đồng thời tính bí mật, toàn vẹn và xác thực.
 - **AES (Advanced Encryption Standard):** Hệ mật đối xứng với tốc độ xử lý phần cứng cực cao, tối ưu cho dữ liệu dung lượng lớn nhưng gặp khó khăn trong việc phân phối khóa qua kênh mạng mở.
-- **RSA (Rivest–Shamir–Adleman):** Hệ mật bất đối xứng giải quyết triệt để bài toán phân phối khóa bằng cặp khóa công khai / khóa bí mật (Public/Private Key), tuy nhiên chi phí tính toán lũy thừa số học mô-đun lớn gây nghẽn hiệu năng khi mã hóa trực tiếp dữ liệu dài.
+- **RSA (Rivest–Shamir–Adleman):** Hệ mật bất đối xứng giải quyết bài toán phân phối khóa bằng cặp khóa công khai / bí mật (Public/Private Key), tuy nhiên chi phí tính toán lũy thừa mô-đun lớn làm giảm hiệu năng nếu mã hóa trực tiếp dữ liệu dài.
 
 **Giải pháp mã hóa lai (Hybrid Encryption):**
 1. Người gửi (Alice) sinh ngẫu nhiên một khóa đối xứng dùng một lần (**Session Key**).

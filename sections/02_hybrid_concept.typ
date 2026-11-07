@@ -10,7 +10,7 @@ Mã hóa lai giải quyết bài toán dung hòa giữa tốc độ xử lý và
     headers: ("AES – Mã hóa đối xứng", "RSA – Mã hóa bất đối xứng"),
     rows: (
       ([Dùng chung một Session Key bí mật.], [Dùng cặp Public Key và Private Key.]),
-      ([Tốc độ phần cứng cực nhanh, tối ưu cho dữ liệu lớn.], [Tốc độ chậm do tính lũy thừa mô-đun trên số nguyên lớn.]),
+      ([Tốc độ xử lý cao, phù hợp với dữ liệu lớn.], [Tốc độ chậm do tính lũy thừa mô-đun trên số nguyên lớn.]),
       ([Cần kênh an toàn để trao đổi khóa phiên.], [Cho phép gửi khóa an toàn qua kênh công khai.]),
       ([Không mã hóa được nếu chưa có khóa chung.], [Không tối ưu để mã hóa trực tiếp khối dữ liệu dài.]),
     )
