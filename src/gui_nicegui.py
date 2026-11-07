@@ -526,9 +526,28 @@ Theo kiến trúc giao thức truyền thông trong `PGP_RSA_AES_Socket_3_files`
             ui.icon("wifi", size="1.1rem", color="purple")
 
         with ui.row().classes("w-full gap-1.5 mb-2"):
-            ui.button("Gửi Gói Tin", icon="forward", on_click=action_send_packet).classes(
-                "flex-1 text-xs bg-purple-600 text-white"
-            )
+            with ui.row().classes("flex-1 items-center gap-0.5"):
+                ui.button("Gửi Gói Tin", icon="forward", on_click=action_send_packet).classes(
+                    "flex-1 text-xs bg-purple-600 text-white"
+                )
+                ui.button(
+                    icon="info",
+                    on_click=lambda: show_info(
+                        "Mục 7.1 & 9: Gửi Gói Tin Qua Kênh Mạng (JSON Packet)",
+                        r"""
+Theo kiến trúc giao thức truyền thông tại Mục 7.1 và Mục 9 trong báo cáo:
+
+- **Cơ chế đóng gói:** Gói tin PGP Envelope được cấu trúc thành định dạng JSON chuẩn gồm 4 trường mật mã độc lập:
+  $$\text{Payload} = \{C_{\text{key}}, \text{IV}, C_{\text{data}}, \text{Tag}\}$$
+- **Đóng khung TCP (Framing):** Dữ liệu được nạp vào kênh Socket TCP dưới dạng chuỗi byte với cơ chế Length-Prefixed:
+  $$\text{Frame} = [4 \text{ bytes Header độ dài}] + [\text{JSON Payload (utf-8)}]$$
+- **Truyền dẫn:** Gói tin an toàn truyền qua môi trường mạng không tin cậy. Dù đối phương nghe lén (Sniffing), không thể đọc được $K$ hay $M$.
+                        """,
+                    ),
+                ).props("flat round dense size=xs").classes(
+                    "text-slate-400 hover:text-indigo-600"
+                )
+
             with ui.row().classes("flex-1 items-center gap-0.5"):
                 ui.button(
                     "Sửa Bit (Tấn Công)", icon="warning", on_click=action_simulate_tamper
