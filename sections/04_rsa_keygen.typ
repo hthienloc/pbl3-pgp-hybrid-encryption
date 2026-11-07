@@ -14,6 +14,7 @@ Mô hình hệ mật mã RSA bao gồm 3 giải thuật hình thức:
   - Tính hàm phi Euler: $phi(n) = (p - 1)(q - 1)$.
   - Chọn số mũ công khai $e$ thỏa mãn điều kiện:
     $ 1 < e < phi(n) quad "và" quad gcd(e, phi(n)) = 1 $
+    Trong thực tế, số mũ Fermat $e = 65537 = 2^(16) + 1$ thường được lựa chọn cố định để vừa tối ưu tốc độ tính toán nhờ biểu diễn nhị phân thưa, vừa chống lại các đòn tấn công chọn bản mã trên số mũ nhỏ @coppersmith1997.
   - Tính số mũ bí mật $d$ là phần tử nghịch đảo nhân của $e$ theo mô-đun $phi(n)$:
     $ e times d equiv 1 mod phi(n) $
   - Khóa công khai gồm cặp $(e, n)$, khóa bí mật tương ứng gồm cặp $(d, n)$.

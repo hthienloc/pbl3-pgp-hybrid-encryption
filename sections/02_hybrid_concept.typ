@@ -19,10 +19,10 @@ Mã hóa lai giải quyết bài toán dung hòa giữa tốc độ xử lý và
 
 == Nguyên lý kết hợp
 Trong kịch bản truyền thông giữa Alice (người gửi) và Bob (người nhận):
-- AES chịu trách nhiệm mã hóa toàn bộ dữ liệu người dùng bằng khóa ngẫu nhiên $K$ do Alice sinh ra.
-- RSA chịu trách nhiệm mã hóa duy nhất khóa $K$ bằng Public Key của Bob ($e_B$). Chỉ có Bob sở hữu Private Key ($d_B$) tương ứng mới có thể giải mã lấy lại $K$.
+- AES chịu trách nhiệm mã hóa toàn bộ dữ liệu người dùng bằng khóa ngẫu nhiên $K$ do Alice sinh ra, bảo đảm tốc độ và khả năng xử lý dữ liệu lớn @nist_fips197.
+- RSA chịu trách nhiệm mã hóa duy nhất khóa $K$ bằng Public Key của Bob ($e_B$). Chỉ có Bob sở hữu Private Key ($d_B$) tương ứng mới có thể giải mã lấy lại $K$, giải quyết triệt để vấn đề trao đổi khóa qua kênh mở theo nguyên lý của Diffie và Hellman @diffie_hellman1976.
 
 Công thức đóng gói dữ liệu của PGP:
 $ "PGP Packet" = { "RSA"_(e_B)(K), quad "AES"_K (M) } $
 
-*Kết luận:* AES bảo vệ dữ liệu, RSA bảo vệ khóa phiên.
+*Kết luận:* AES bảo vệ dữ liệu, RSA bảo vệ khóa phiên @stallings2017.

@@ -26,7 +26,7 @@ Cả hai phía đều import trực tiếp gói `algorithms` của nhóm, nhờ 
 
 == Đóng gói và truyền nhận gói tin
 
-TCP là giao thức luồng byte (byte stream), không bảo toàn ranh giới thông điệp. Vì vậy chương trình áp dụng cơ chế *length-prefixed framing*: mỗi gói tin được gửi kèm 4 byte độ dài ở đầu, theo thứ tự Big-Endian.
+TCP là giao thức hướng luồng byte (byte stream), không bảo toàn ranh giới thông điệp giữa các lần truyền. Vì vậy chương trình áp dụng cơ chế đóng khung tiền tố độ dài (*length-prefixed framing*): mỗi gói tin được gửi kèm 4 byte độ dài ở đầu theo thứ tự Big-Endian.
 
 ```python
 def send_json(connection, payload_dict):
@@ -41,7 +41,7 @@ def receive_json(connection):
     return json.loads(packet.decode("utf-8"))
 ```
 
-Hàm `recv_exact` lặp `recv()` cho tới khi đọc đủ số byte yêu cầu, khắc phục hiện tượng một lần `recv()` chỉ trả về một phần dữ liệu. Các trường nhị phân (`nonce`, `ciphertext`, `auth_tag`) được mã hóa Base64, còn `enc_session_key` được biểu diễn dạng chuỗi hex vì là số nguyên lớn. Gói tin bị giới hạn tối đa 1 MB và mỗi kết nối có timeout 15 giây.
+Hàm `recv_exact` lặp `recv()` cho tới khi đọc đủ số byte yêu cầu, khắc phục hiện tượng phân mảnh TCP byte stream khi một lần `recv()` chỉ trả về một phần dữ liệu. Các trường nhị phân (`nonce`, `ciphertext`, `auth_tag`) được mã hóa Base64, còn `enc_session_key` được biểu diễn dạng chuỗi hex vì là số nguyên lớn. Gói tin bị giới hạn tối đa 1 MB và mỗi kết nối có timeout 15 giây.
 
 == Bắt tay và xác thực Public Key
 
@@ -58,7 +58,7 @@ def fingerprint(public_key):
     return hashlib.sha256(f"RSA:{e}:{n}".encode("ascii")).hexdigest()
 ```
 
-Người dùng đối chiếu trực tiếp hai chuỗi hex trên màn hình hai máy. Nếu trùng khớp, khóa nhận được đúng là của Bob; nếu khác, kênh đã bị can thiệp và phải dừng phiên. Đây là bước kiểm tra ngoài kênh (out-of-band) nhằm hạn chế tấn công xen giữa ở giai đoạn trao đổi khóa.
+Người dùng đối chiếu trực tiếp hai chuỗi hex trên màn hình hai máy. Nếu trùng khớp, khóa nhận được đúng là của Bob; nếu khác, kênh đã bị can thiệp và phải dừng phiên. Đây là bước kiểm tra ngoài kênh (out-of-band fingerprint verification) theo nguyên lý mô hình tín nhiệm PGP @rfc4880 @stallings2017 nhằm hạn chế tấn công giả mạo và tấn công xen giữa (Man-in-the-Middle) ở giai đoạn trao đổi khóa công khai.
 
 == Quy trình hoạt động
 

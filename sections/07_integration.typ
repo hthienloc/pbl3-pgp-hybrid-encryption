@@ -15,19 +15,19 @@ Khi truyền tải qua mạng, dòng dữ liệu PGP được cấu trúc thành
 ]
 #v(0.3em)
 
-Trong cấu trúc gói tin trên, hai thành phần của chế độ mã hóa xác thực AES-GCM gồm có:
-- *Vector khởi tạo (IV - Initialization Vector / Nonce):* Là chuỗi ngẫu nhiên 12 bytes (96 bits) được sinh mới cho mỗi thông điệp, nhằm tránh trùng lặp bản mã khi mã hóa các thông điệp khác nhau bằng cùng một khóa phiên. IV được truyền công khai trong gói tin, và theo chuẩn GCM, không được tái sử dụng cùng một cặp $(K, "IV")$.
+Trong cấu trúc gói tin trên, hai thành phần của chế độ mã hóa xác thực AES-GCM @nist_sp800_38d @mcgrew2004 gồm có:
+- *Vector khởi tạo (IV - Initialization Vector / Nonce):* Là chuỗi ngẫu nhiên 12 bytes (96 bits) được sinh mới cho mỗi thông điệp, nhằm tránh trùng lặp bản mã khi mã hóa các thông điệp khác nhau bằng cùng một khóa phiên. IV được truyền công khai trong gói tin, và theo chuẩn NIST SP 800-38D @nist_sp800_38d, không được tái sử dụng cùng một cặp $(K, "IV")$.
 - *Mã xác thực thông điệp (Authentication Tag):* Là thẻ kiểm thực mật mã 16 bytes (128 bits) do hàm băm GHASH tính toán từ dữ liệu mã hóa. Nếu dữ liệu trên đường truyền bị thay đổi, phép kiểm tra Authentication Tag tại phía nhận sẽ thất bại và gói tin bị từ chối.
 
 == Cơ sở toán học của AES-GCM (AEAD)
 
-Chế độ AES-GCM kết hợp hai nền tảng số học để đạt được tính bảo mật và toàn vẹn song song:
+Chế độ AES-GCM kết hợp hai nền tảng số học để đạt được tính bảo mật và toàn vẹn song song theo thiết kế chuẩn của McGrew và Viega @mcgrew2004:
 
 1. *Mã hóa dòng CTR Mode:* Các khối bản rõ $P_i$ được mã hóa qua phép XOR với chuỗi khóa giả ngẫu nhiên sinh bởi thuật toán AES:
 $ C_i = P_i xor "AES"_K ("CB"_i) $
 với $"CB"_i$ là giá trị Counter Block tính từ Nonce (12 bytes) nối với bộ đếm 32-bit tăng dần.
 
-2. *Xác thực toàn vẹn bằng hàm băm GHASH:* Giá trị kiểm thực Authentication Tag được tính trên trường hữu hạn Galois $FF_(2^(128))$ dựa trên đa thức bất khả quy:
+2. *Xác thực toàn vẹn bằng hàm băm GHASH:* Giá trị kiểm thực Authentication Tag được tính trên trường hữu hạn Galois $FF_(2^(128))$ dựa trên đa thức bất khả quy @nist_sp800_38d:
 $ f(x) = x^(128) + x^7 + x^2 + x + 1 $
 Khóa băm xác thực $H = "AES"_K (0^(128))$ được dùng để thực hiện phép nhân đa thức lặp Horner trên $FF_(2^(128))$ qua từng khối bản mã $C_i$:
 $ X_i = (X_(i-1) xor C_i) dot H $
@@ -65,7 +65,7 @@ Nếu kẻ tấn công can thiệp bất kỳ bit nào trên Ciphertext ($C_i ar
 Tiến trình xử lý trong mã nguồn `algorithms/hybrid_pgp.py` được tổ chức thành hai luồng độc lập tương ứng với hai hàm nghiệp vụ:
 
 1. *Hàm đóng gói mã hóa (`alice_encrypt_package`):*
-   - Khởi tạo khóa phiên ngẫu nhiên $K$ độ dài 128-bit (`os.urandom(16)`).
+   - Khởi tạo khóa phiên ngẫu nhiên $K$ độ dài 128-bit thông qua CSPRNG hệ điều hành (`os.urandom(16)`) theo khuyến nghị NIST SP 800-90A @nist_sp800_90a.
    - Mã hóa bản rõ $M$ bằng AES-GCM với khóa $K$, trích xuất bộ ba: Ciphertext ($C_("data")$), Nonce (IV 12 bytes) và Authentication Tag (16 bytes).
    - Dùng Public Key của Bob $(e_B, n)$ mã hóa khóa phiên $K$ theo thuật toán RSA: $C_("key") = K^{e_B} mod n$. Khóa phiên được mã hóa *trọn vẹn* dưới dạng số nguyên 128-bit (không lấy modulo $n$ trước khi mã hóa), do đó yêu cầu modulus $n > 2^128$.
    - Ghép 4 thành phần thành cấu trúc payload duy nhất để truyền qua mạng.

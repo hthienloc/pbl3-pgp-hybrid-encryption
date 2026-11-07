@@ -12,9 +12,9 @@ Thuật toán RSA được tổ chức thành các mô-đun độc lập trong t
     headers: ("Tên hàm", "Mô tả chức năng & Giải thuật"),
     rows: (
       ([`extended_gcd(a, b)`], [Cài đặt giải thuật Euclid mở rộng: đệ quy tìm ước chung lớn nhất và các hệ số Bézout $x, y$ sao cho $a x + b y = gcd(a, b)$. Dùng để tính số mũ bí mật $d$.]),
-      ([`is_prime(n, k)`], [Kiểm tra số nguyên tố xác suất bằng thuật toán Miller–Rabin với $k$ vòng thử (mặc định $k = 20$), dùng nguồn ngẫu nhiên an toàn `random.SystemRandom`. Là cơ sở để sinh $p, q$ động.]),
+      ([`is_prime(n, k)`], [Kiểm tra số nguyên tố xác suất bằng thuật toán Miller–Rabin @rabin1980 với $k$ vòng thử (mặc định $k = 20$), dùng nguồn ngẫu nhiên an toàn `random.SystemRandom`. Là cơ sở để sinh $p, q$ động.]),
       ([`generate_prime(bits)`], [Sinh ngẫu nhiên một số nguyên tố có độ dài `bits` bit: bật bit cao nhất và bit thấp nhất để bảo đảm độ dài, sau đó lặp tới khi vượt qua `is_prime`.]),
-      ([`generate_rsa_keys(p=None, q=None, e=65537, bits=256)`], [Giai đoạn sinh khóa: nếu truyền `p, q` thì dùng trực tiếp (ví dụ minh họa $p=61, q=53, e=17$); nếu không, tự sinh hai số nguyên tố $p, q$ động (mặc định 256-bit) thỏa $gcd(e, phi(n)) = 1$, rồi tính $n = p times q$, $phi = (p-1)(q-1)$, $d=$ `mod_inverse(e, phi)`, trả về cặp `((e, n), (d, n))`.]),
+      ([`generate_rsa_keys(p=None, q=None, e=65537, bits=256)`], [Giai đoạn sinh khóa: nếu truyền `p, q` thì dùng trực tiếp (ví dụ minh họa $p=61, q=53, e=17$); nếu không, tự sinh hai số nguyên tố $p, q$ động (mặc định 256-bit) thỏa $gcd(e, phi(n)) = 1$, rồi tính $n = p times q$, $phi = (p-1)(q-1)$, $d=$ `mod_inverse(e, phi)`, trả về cặp `((e, n), (d, n))` tuân thủ đặc tả PKCS \#1 @rfc8017.]),
       ([`rsa_encrypt(pub_key, M)`], [Giai đoạn mã hóa: Áp dụng công thức $C = M^e mod n$ sử dụng hàm lũy thừa modulo tối ưu `pow(M, e, n)`.]),
       ([`rsa_decrypt(priv_key, C)`], [Giai đoạn giải mã: Áp dụng công thức $M = C^d mod n$ thông qua `pow(C, d, n)`.])
     )
