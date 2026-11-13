@@ -764,11 +764,11 @@ def page_algorithms():
         is_matched = (k_rec_bytes == alg_data["k_bytes"])
 
         txt_rsa_dec_process.set_text(
-            f"1. Nạp bản mã khóa phiên C_key = 0x{c_key:x}\n"
-            f"2. Nạp khóa bí mật Bob: d = {d_val}\n"
+            f"1. Nạp bản mã khóa phiên C_key:\n   0x{c_key:x}\n"
+            f"2. Nạp khóa bí mật Bob d:\n   {d_val}\n"
             f"3. Lũy thừa mô-đun theo Định lý Euler:\n"
             f"   K' = (C_key)^d mod n = K^(e*d) ≡ K mod n\n"
-            f"4. Khôi phục số nguyên K' = {k_rec_int}\n"
+            f"4. Khôi phục số nguyên K':\n   {k_rec_int}\n"
             f"5. Chuyển đổi về 16 bytes khóa đối xứng AES"
         )
         txt_rsa_dec_output.set_text(
@@ -1026,7 +1026,7 @@ def page_algorithms():
                     lbl_k4_priv = ui.label("...").classes("text-xs font-mono text-rose-600 truncate w-full")
                 with ui.card().classes("p-3 bg-teal-50/50 rounded-lg border border-teal-200"):
                     ui.label("QUÁ TRÌNH XỬ LÝ (ĐỊNH LÝ EULER)").classes("text-[11px] font-bold text-teal-800 uppercase border-b border-teal-200 pb-1")
-                    txt_rsa_dec_process = ui.label("Chờ nhận C_key từ Khối 3...").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap leading-relaxed mt-2")
+                    txt_rsa_dec_process = ui.label("Chờ nhận C_key từ Khối 3...").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap break-all leading-relaxed mt-2")
                 with ui.card().classes("p-3 bg-emerald-50/50 rounded-lg border border-emerald-200"):
                     ui.label("OUTPUT (KHÓA K' KHÔI PHỤC)").classes("text-[11px] font-bold text-emerald-800 uppercase border-b border-emerald-200 pb-1")
                     txt_rsa_dec_output = ui.label("Chưa có kết quả...").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap break-all leading-relaxed mt-2")
