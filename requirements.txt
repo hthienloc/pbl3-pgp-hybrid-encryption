@@ -1,0 +1,4 @@
+pycryptodomex>=3.20.0
+nicegui>=2.0.0
+latex2mathml>=3.80.0
+pyyaml>=6.0.0

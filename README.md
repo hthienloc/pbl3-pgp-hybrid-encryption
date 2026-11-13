@@ -64,7 +64,7 @@ Trong môi trường truyền thông mạng, việc truyền tải dữ liệu a
     └── pgp_crypto.py       # Cầu nối JSON/Base64 ↔ algorithms/
 ```
 
-> **Yêu cầu thư viện:** `algorithms/` và demo socket cần `pycryptodomex` (import `Cryptodome`). Chạy `python3 src/rsa.py` thì không cần thư viện ngoài.
+> **Yêu cầu thư viện:** Cài đặt các gói phụ thuộc qua `pip install -r requirements.txt` (gồm `pycryptodomex`, `nicegui`, `latex2mathml`, `pyyaml`). Chạy riêng `python3 src/rsa.py` thì không cần thư viện ngoài.
 
 ---
 
@@ -116,6 +116,17 @@ cd PGP_RSA_AES_Socket_3_files
 python3 client_alice.py <IP_CUA_BOB>
 ```
 Client có 3 chế độ: `1` gửi chuẩn, `2` giả lập sửa ciphertext, `3` giả lập sai `enc_session_key`. Hai bên đối chiếu **SHA-256 fingerprint** của Public Key trước khi trao đổi.
+
+### 5. Chạy giao diện mô phỏng trực quan (Web GUI)
+Khởi chạy ứng dụng mô phỏng trực quan trên nền tảng web (NiceGUI):
+```bash
+python3 src/gui_nicegui.py
+```
+Sau đó mở trình duyệt web và truy cập địa chỉ:
+```text
+http://localhost:8080
+```
+Giao diện cung cấp sơ đồ 8 khối trực quan theo thời gian thực (Alice -> Kênh mạng -> Bob), hỗ trợ nút bấm **"Sửa bit (Tấn công)"** để kiểm thử xác thực tính toàn vẹn (GHASH), cùng trang chi tiết từng thuật toán số học kèm Terminal log ở đáy màn hình.
 
 ---
 
