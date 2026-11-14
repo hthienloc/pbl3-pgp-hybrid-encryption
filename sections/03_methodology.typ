@@ -37,10 +37,10 @@ Hệ mật RSA sử dụng trong đề tài thực hiện phép tính số học
 + *Tìm khóa bí mật bằng giải thuật Euclid mở rộng:* Giải phương trình đồng dư ở @eq-rsa-inverse để tìm $d$ trong thời gian $O(log(phi(n)))$:
   $ e dot d equiv 1 (mod phi(n)) $ <eq-rsa-inverse>
 
-Cần phân biệt rạch ròi ý nghĩa số bit của từng đại lượng trong hệ thống:
-- Với bản mô phỏng thuật toán trên giao diện web và kiểm thử nhanh, từng số nguyên tố $p, q$ dài 128 bit nên modulus $n = p dot q$ dài 256 bit. Cấu hình này giúp các con số trung gian đủ gọn để quan sát trực tiếp từng bước biến đổi số học.
-- Với mô hình truyền thông Socket qua mạng LAN, từng số nguyên tố $p, q$ dài 256 bit nên modulus $n$ dài 512 bit nhằm tăng biên độ an toàn cho khóa công khai truyền qua mạng mà vẫn bảo đảm thời gian sinh khóa nhanh.
-- Trong cả hai cấu hình, khóa phiên AES gốc $K$ luôn có kích thước cố định 128 bit ($K < 2^(128) < n$), còn bản mã khóa phiên $C_"key"$ sau khi mã hóa RSA có kích thước bằng kích thước modulus $n$ (256 bit hoặc 512 bit).
+Toàn bộ hệ thống thống nhất dùng một cấu hình kích thước bit duy nhất cho cả mô phỏng thuật toán và truyền thông mạng LAN, với ý nghĩa từng đại lượng như sau:
+- Mỗi số nguyên tố $p, q$ có kích thước *256 bit*, nên modulus $n = p dot q$ có kích thước *512 bit*.
+- Khóa phiên AES gốc $K$ luôn có kích thước cố định *128 bit* ($K < 2^(128) < n$).
+- Bản mã khóa phiên $C_"key"$ sau khi mã hóa bằng RSA có kích thước *512 bit* (bằng kích thước modulus $n$).
 
 Quá trình mã hóa và giải mã RSA tại @eq-rsa-enc và @eq-rsa-dec thỏa mãn tính đúng đắn nhờ Định lý Euler:
 $ C_"key" = K^e mod n $ <eq-rsa-enc>
@@ -95,7 +95,7 @@ Giao thức TCP truyền dữ liệu theo luồng byte liên tục nên có th�
     columns: (1.2fr, 1.1fr, 1.1fr, 1.7fr),
     headers: ("Thành phần", "Kích thước gốc", "Biểu diễn truyền tải", "Vai trò mật mã"),
     rows: (
-      ([Khóa phiên mã hóa], [256 hoặc 512 bit], [Số nguyên / Hex], [Khóa phiên 128-bit đã mã hóa bằng khóa công khai của Bob qua RSA.]),
+      ([Khóa phiên mã hóa], [512 bit], [Số nguyên / Hex], [Khóa phiên 128-bit đã mã hóa bằng khóa công khai của Bob qua RSA.]),
       ([Vector khởi tạo], [12 byte (96 bit)], [Base64 / Hex], [Giá trị ngẫu nhiên dùng một lần cho chế độ AES-GCM.]),
       ([Bản mã dữ liệu], [Bằng độ dài $M$], [Base64 / Hex], [Nội dung thông điệp $M$ đã mã hóa đối xứng bằng AES-CTR.]),
       ([Thẻ xác thực], [16 byte (128 bit)], [Base64 / Hex], [Mã kiểm tra toàn vẹn sinh bởi hàm băm GHASH.]),

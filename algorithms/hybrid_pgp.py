@@ -59,7 +59,7 @@ def bob_decrypt_package(package, bob_priv_key):
 if __name__ == "__main__":
     from .rsa import generate_rsa_keys
 
-    bob_pub, bob_priv = generate_rsa_keys(bits=256)
+    bob_pub, bob_priv = generate_rsa_keys(bits=512)
     msg = "PGP Hybrid Encryption tích hợp thành công!"
     pkg, s_key = alice_encrypt_package(msg, bob_pub)
     decrypted = bob_decrypt_package(pkg, bob_priv)

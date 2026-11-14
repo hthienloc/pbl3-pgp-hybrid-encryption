@@ -21,9 +21,9 @@ def run_tests():
     print("DEMO PGP HYBRID ENCRYPTION (RSA + AES-GCM)")
     print("=" * 65)
 
-    # Khởi tạo cặp khóa RSA 256-bit cho Bob và Eve (đủ chứa trọn khóa AES 128-bit)
-    bob_pub_key, bob_priv_key = generate_rsa_keys(bits=256)
-    _, eve_priv_key = generate_rsa_keys(bits=256)
+    # Khởi tạo cặp khóa RSA 512-bit cho Bob và Eve (đủ chứa trọn khóa AES 128-bit)
+    bob_pub_key, bob_priv_key = generate_rsa_keys(bits=512)
+    _, eve_priv_key = generate_rsa_keys(bits=512)
 
     message = "Báo cáo tiến độ Nhóm 7: PGP Hybrid Encryption hoạt động chính xác!"
     print(f'\n[ALICE] Thông điệp gốc: "{message}"')

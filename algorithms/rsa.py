@@ -45,7 +45,7 @@ def generate_prime(bits=128):
             return candidate
 
 
-def generate_rsa_keys(p=None, q=None, e=65537, bits=256):
+def generate_rsa_keys(p=None, q=None, e=65537, bits=512):
     """
     Sinh cặp khóa Public Key (e, n) và Private Key (d, n).
     - Nếu truyền p, q cụ thể: dùng trực tiếp p, q đó (ví dụ minh họa p=61, q=53, e=17).

@@ -22,7 +22,7 @@ Trong thực tế, hai khái niệm PGP (*Pretty Good Privacy*) và OpenPGP thư
 + Xây dựng mô hình Client–Server qua Socket TCP (*Transmission Control Protocol*) có đóng khung độ dài để truyền nhận ổn định trong mạng cục bộ (LAN).
 + Phát triển giao diện mô phỏng trực quan và kiểm thử các kịch bản tấn công sửa đổi dữ liệu hoặc dùng sai khóa.
 
-Về phạm vi, hệ thống tập trung bảo đảm tính bí mật, tính toàn vẹn dữ liệu và xác thực thủ công khóa công khai qua dấu vân tay SHA-256. Nhóm dùng cấu hình RSA-256 cho bản demo thuật toán để dễ quan sát số học và RSA-512 cho mô hình Socket LAN nhằm tăng biên độ an toàn mà vẫn sinh khóa nhanh (chi tiết kích thước khóa trình bày ở Mục 3.2). Các thành phần mở rộng của OpenPGP như đệm RSA-OAEP @rfc8017 (chống tấn công Coppersmith @coppersmith1997), chữ ký số, Web of Trust và gói tin nhị phân đa tầng chưa nằm trong phạm vi phiên bản này.
+Về phạm vi, hệ thống tập trung bảo đảm tính bí mật, tính toàn vẹn dữ liệu và xác thực thủ công khóa công khai qua dấu vân tay SHA-256. Toàn bộ các mô-đun từ mô phỏng thuật toán, giao diện web đến truyền thông Socket LAN thống nhất sử dụng khóa RSA-512 (modulus $n = 512$ bit từ hai số nguyên tố $p, q$ 256-bit) để bảo vệ khóa phiên AES-128 (128-bit), vừa bảo đảm tốc độ sinh khóa tức thì vừa giữ cấu hình đồng nhất. Các thành phần mở rộng của OpenPGP như đệm RSA-OAEP @rfc8017 (chống tấn công Coppersmith @coppersmith1997), chữ ký số, Web of Trust và gói tin nhị phân đa tầng chưa nằm trong phạm vi phiên bản này.
 
 == Phân công nhiệm vụ của các thành viên
 Công việc nghiên cứu lý thuyết, cài đặt thuật toán, lập trình mạng và kiểm thử được phân chia cho ba thành viên như trong @tbl-task-allocation.

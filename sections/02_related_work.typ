@@ -13,7 +13,7 @@ Chuẩn OpenPGP (RFC 4880 @rfc4880, RFC 9580 @rfc9580) không định nghĩa thu
 #figure(
   report-table(
     columns: (1.1fr, 1.5fr, 1.5fr),
-    headers: ("Tiêu chí so sánh", "AES-128-GCM (Đối xứng)", "RSA-256 / 512 (Bất đối xứng)"),
+    headers: ("Tiêu chí so sánh", "AES-128-GCM (Đối xứng)", "RSA-512 (Bất đối xứng)"),
     rows: (
       ([Số lượng khóa], [Dùng chung 1 khóa phiên bí mật $K$ (128-bit) cho cả hai đầu.], [Dùng cặp khóa công khai $(e, n)$ và khóa bí mật $(d, n)$.]),
       ([Tốc độ xử lý], [Nhanh nhờ các phép toán dịch byte, tra bảng và XOR.], [Chậm do tính lũy thừa mô-đun trên số nguyên lớn.]),
@@ -29,4 +29,4 @@ Do hai hệ mật bù trừ trực tiếp cho nhau, giải pháp mã hóa lai đ
 
 $ "PGP_Packet" = { "RSA"_(e_B)(K), quad "AES"_K (M) } $ <eq-hybrid-packet>
 
-Trong mô hình này, kích thước khóa RSA 256-bit hoặc 512-bit được dùng cho mục đích học thuật và mô phỏng trực quan; khi triển khai trong môi trường sản xuất thực tế, độ dài modulus RSA cần nâng lên tối thiểu 2048 bit kèm cơ chế đệm RSA-OAEP.
+Trong mô hình này, kích thước khóa RSA 512-bit được dùng cho mục đích học thuật và mô phỏng trực quan; khi triển khai trong môi trường sản xuất thực tế, độ dài modulus RSA cần nâng lên tối thiểu 2048 bit kèm cơ chế đệm RSA-OAEP.

@@ -572,7 +572,7 @@ def page_integrated():
             lbl_math_console = ui.label("\n".join(state["log_history"])).classes("text-xs font-mono text-slate-300 whitespace-pre-wrap leading-relaxed")
 
     # Khởi tạo cặp khóa ban đầu
-    state["bob_pub"], state["bob_priv"] = generate_rsa_keys(bits=256)
+    state["bob_pub"], state["bob_priv"] = generate_rsa_keys(bits=512)
     e, n = state["bob_pub"]
     d, _ = state["bob_priv"]
     lbl_bob_pub.set_text(f"e={e}, n={n}")
@@ -606,7 +606,7 @@ def page_algorithms():
     # CÁC HÀM THỰC THI NỐI LIỀN DỮ LIỆU
     # -------------------------------------------------------------------------
     def execute_rsa_keygen(silent=False):
-        pub, priv = generate_rsa_keys(bits=256)
+        pub, priv = generate_rsa_keys(bits=512)
         alg_data["pub"] = pub
         alg_data["priv"] = priv
         e_val, n_val = pub
@@ -614,7 +614,7 @@ def page_algorithms():
 
         txt_rsa_keygen_process.set_text(
             f"1. Sinh p, q (128-bit) qua kiểm tra nguyên tố xác suất Miller-Rabin\n"
-            f"2. Tính Modulus: n = p * q (256-bit)\n"
+            f"2. Tính Modulus: n = p * q (512-bit)\n"
             f"3. Hàm Euler: phi(n) = (p - 1)(q - 1)\n"
             f"4. Chọn Fermat e = {e_val} (gcd(e, phi(n)) = 1)\n"
             f"5. Euclid mở rộng tìm khóa bí mật d: e*d ≡ 1 mod phi(n)"
@@ -630,7 +630,7 @@ def page_algorithms():
         lbl_k4_priv.set_text(f"d={d_val}, n={n_val}")
 
         if not silent:
-            notify("Tạo khóa RSA: Đã sinh cặp khóa 256-bit", "teal")
+            notify("Tạo khóa RSA: Đã sinh cặp khóa 512-bit", "teal")
 
     def execute_aes_gcm(silent=False):
         msg = inp_aes_msg.value.strip()
@@ -889,13 +889,13 @@ def page_algorithms():
                 with ui.row().classes("items-center gap-2"):
                     ui.label("1").classes("w-6 h-6 rounded-full bg-teal-600 text-white flex items-center justify-center text-xs font-bold")
                     ui.label("Tạo Khóa RSA (Phía Bob)").classes("text-sm font-bold text-slate-800")
-                    ui.badge("RSA-256", color="teal").classes("text-[10px]")
+                    ui.badge("RSA-512", color="teal").classes("text-[10px]")
                 ui.button("Tạo Cặp Khóa", icon="refresh", on_click=lambda: execute_rsa_keygen()).classes("bg-teal-600 text-white text-xs px-3 py-1 rounded")
 
             with ui.grid(columns=3).classes("w-full gap-3 items-stretch"):
                 with ui.card().classes("p-3 bg-slate-50 rounded-lg border border-slate-200"):
                     ui.label("INPUT (THAM SỐ)").classes("text-[11px] font-bold text-slate-600 uppercase border-b pb-1")
-                    ui.label("• Modulus n: 256 bits\n• Số nguyên tố p, q: 128 bits\n• Fermat: e = 65537\n• Miller-Rabin: k = 20 vòng").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap leading-relaxed mt-2")
+                    ui.label("• Modulus n: 512 bits\n• Số nguyên tố p, q: 256 bits\n• Fermat: e = 65537\n• Miller-Rabin: k = 20 vòng").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap leading-relaxed mt-2")
                 with ui.card().classes("p-3 bg-teal-50/50 rounded-lg border border-teal-200"):
                     ui.label("QUÁ TRÌNH XỬ LÝ SỐ HỌC").classes("text-[11px] font-bold text-teal-800 uppercase border-b border-teal-200 pb-1")
                     txt_rsa_keygen_process = ui.label("Nhấn 'Tạo Cặp Khóa' để tính toán...").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap leading-relaxed mt-2")

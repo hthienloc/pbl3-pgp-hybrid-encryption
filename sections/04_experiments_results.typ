@@ -29,7 +29,7 @@
 #v(0.3em)
 
 == Kết quả kiểm thử ba kịch bản an toàn
-Nhóm triển khai chương trình thử nghiệm trên ngôn ngữ Python kết hợp thư viện mật mã PyCryptodome với khóa RSA 256-bit (hai số nguyên tố 128-bit) và khóa phiên AES 128-bit để đánh giá ba kịch bản: truyền thông hợp lệ, tấn công sửa đổi bản mã trên đường truyền và tấn công giải mã bằng khóa bí mật sai. Kết quả tóm tắt được trình bày trong @tbl-test-cases.
+Nhóm triển khai chương trình thử nghiệm trên ngôn ngữ Python kết hợp thư viện mật mã PyCryptodome với khóa RSA 512-bit (hai số nguyên tố 256-bit) và khóa phiên AES 128-bit để đánh giá ba kịch bản: truyền thông hợp lệ, tấn công sửa đổi bản mã trên đường truyền và tấn công giải mã bằng khóa bí mật sai. Kết quả tóm tắt được trình bày trong @tbl-test-cases.
 
 #figure(
   report-table(
@@ -46,15 +46,15 @@ Nhóm triển khai chương trình thử nghiệm trên ngôn ngữ Python kết
 
 Dưới đây là nhật ký chạy thực tế của từng kịch bản để kiểm chứng kết quả đạt yêu cầu:
 
-- *Kịch bản 1 (Truyền thông hợp lệ):* Gói tin gồm khóa phiên mã hóa 256-bit, vector khởi tạo 12 byte, bản mã dữ liệu 81 byte và thẻ xác thực 16 byte được bên nhận giải mã chính xác 100%.
+- *Kịch bản 1 (Truyền thông hợp lệ):* Gói tin gồm khóa phiên mã hóa 512-bit, vector khởi tạo 12 byte, bản mã dữ liệu 81 byte và thẻ xác thực 16 byte được bên nhận giải mã chính xác 100%.
 
 ```text
 [ALICE] Thông điệp gốc: "Báo cáo tiến độ Nhóm 7: PGP Hybrid Encryption hoạt động chính xác!"
 [ALICE] Mã hóa hoàn tất:
-  + Khóa phiên mã hóa (RSA)     : 0x3db2e725bbdfa6ccfdc2ad8aa86796631e...
-  + Vector khởi tạo (AES-GCM)   : 41878945b25c12f1f69b5057 (12 bytes)
-  + Bản mã dữ liệu (AES)        : bb80889066cd1281a1282c00ce2a3b0e... (81 bytes)
-  + Thẻ xác thực (Tag)          : 1139bb3c42099c5b3984cfd8f0235632 (16 bytes)
+  + Khóa phiên mã hóa (RSA)     : 0x21fe7b44d00027e78b0d491225917c9d11...
+  + Vector khởi tạo (AES-GCM)   : cf143dfebc01f7d3288721c5 (12 bytes)
+  + Bản mã dữ liệu (AES)        : 4fc7c13e891897cd657a30a80a80068912... (81 bytes)
+  + Thẻ xác thực (Tag)          : 0cb440f3f4fd0e69f548cf1841f6e89b (16 bytes)
 
 TEST CASE 01: Bob dùng đúng Private Key của mình
 [BOB] Giải mã thành công: "Báo cáo tiến độ Nhóm 7: PGP Hybrid Encryption hoạt động chính xác!"

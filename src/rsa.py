@@ -58,7 +58,7 @@ def generate_prime(bits=128):
             return candidate
 
 
-def generate_rsa_keys(p=None, q=None, e=65537, bits=256):
+def generate_rsa_keys(p=None, q=None, e=65537, bits=512):
     """
     Giai đoạn 1: Sinh cặp khóa RSA
     - n = p * q (Modulus)
