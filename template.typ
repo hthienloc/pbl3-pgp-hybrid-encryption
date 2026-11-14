@@ -48,72 +48,73 @@
         ),
       ),
     )
-    set text(font: heading-font)
+    set text(font: heading-font, size: 12pt, fill: rgb("#0f172a"))
 
     v(0.6cm)
 
     // Khối 1: Đơn vị đào tạo
     align(center)[
       #set par(leading: 0.65em)
-      #text(size: 13pt, weight: "bold", fill: rgb("#0f172a"))[ĐẠI HỌC ĐÀ NẴNG] \
-      #text(size: 13.5pt, weight: "bold", fill: heading-color)[TRƯỜNG ĐẠI HỌC BÁCH KHOA] \
-      #text(size: 12pt, weight: "bold", fill: rgb("#334155"))[KHOA ĐIỆN TỬ VÀ TRÍ TUỆ NHÂN TẠO]
+      #text(weight: "bold")[ĐẠI HỌC ĐÀ NẴNG] \
+      #text(weight: "bold", fill: heading-color)[TRƯỜNG ĐẠI HỌC BÁCH KHOA] \
+      #text(weight: "bold")[KHOA ĐIỆN TỬ VÀ TRÍ TUỆ NHÂN TẠO]
       #v(0.3em)
-      #line(length: 45%, stroke: 1pt + rgb("#94a3b8"))
+      #line(length: 40%, stroke: 0.8pt + heading-color)
     ]
 
     v(0.8fr)
 
     // Khối 2: Logo trường
     align(center)[
-      #image("logo_bachkhoa.png", width: 3.4cm)
+      #image("logo_bachkhoa.png", width: 3.2cm)
     ]
 
     v(0.9fr)
 
     // Khối 3: Tên báo cáo & Đề tài
     align(center)[
-      #text(size: 14pt, weight: "bold", tracking: 0.5pt, fill: rgb("#1e293b"))[
-        BÁO CÁO ĐỒ ÁN HỌC PHẦN
+      #text(size: 14pt, weight: "bold")[
+        #doc-category
       ] \
       #v(0.2em)
-      #text(size: 12.5pt, weight: "bold", fill: rgb("#475569"))[
-        PBL3: MẠNG MÁY TÍNH – NHÓM 7
+      #text(size: 12pt, weight: "bold")[
+        PBL3: MẠNG MÁY TÍNH
       ]
 
       #v(1.2em)
 
       #block(
         width: 90%,
-        inset: (x: 10pt, y: 12pt),
+        inset: (x: 12pt, y: 14pt),
         stroke: (top: 1.2pt + heading-color, bottom: 1.2pt + heading-color),
         fill: rgb("#f8fafc"),
       )[
-        #set par(leading: 0.6em)
-        #text(size: 11pt, weight: "bold", fill: rgb("#475569"))[ĐỀ TÀI:] \
-        #v(0.3em)
-        #text(size: 26pt, weight: "bold", fill: heading-color)[#upper(main-title)] \
+        #set par(leading: 0.65em)
+        #text(size: 12pt, weight: "bold")[ĐỀ TÀI] \
         #v(0.4em)
-        #text(size: 14pt, weight: "bold", fill: rgb("#1e293b"))[#upper(sub-title)]
+        #text(size: 22pt, weight: "bold", fill: heading-color)[#upper(main-title)] \
+        #v(0.4em)
+        #text(size: 13pt, weight: "bold")[#upper(sub-title)]
       ]
     ]
 
-    v(1.3fr)
+    v(1.2fr)
 
     // Khối 4: Bảng thông tin GVHD & Sinh viên thực hiện
     align(center)[
       #block(width: 88%)[
         #set align(left)
+        #set text(size: 11.5pt)
         #table(
-          columns: (38pt, 1fr, 110pt),
+          columns: (38pt, 1fr, 100pt),
           stroke: 0.5pt + rgb("#cbd5e1"),
-          inset: (x: 10pt, y: 8pt),
-          fill: (x, y) => if y == 0 or y == 1 { rgb("#f1f5f9") } else if y == 2 { rgb("#f8fafc") } else { none },
+          inset: (x: 10pt, y: 7pt),
+          fill: (x, y) => if y <= 2 { rgb("#f8fafc") } else { none },
           table.cell(colspan: 3)[
-            #text(weight: "bold", fill: rgb("#0f172a"))[Giảng viên hướng dẫn:] TS. Trần Thị Minh Hạnh
+            *Giảng viên hướng dẫn:* TS. Trần Thị Minh Hạnh
           ],
           table.cell(colspan: 3)[
-            #text(weight: "bold", fill: rgb("#0f172a"))[Sinh viên thực hiện (Nhóm 7):]
+            *Sinh viên thực hiện (Nhóm 7):*
           ],
           align(center)[*STT*], [*Họ và tên*], align(center)[*MSSV*],
           align(center)[1], [Vũ Duy Dương], align(center)[`106230007`],
@@ -129,7 +130,7 @@
     align(center)[
       #line(length: 25%, stroke: 0.6pt + rgb("#cbd5e1"))
       #v(0.3em)
-      #text(size: 11.5pt, fill: rgb("#1e293b"), weight: "bold")[Đà Nẵng, năm 2026]
+      #text(size: 12pt, weight: "bold")[Đà Nẵng, năm 2026]
     ]
     v(0.4cm)
   }
