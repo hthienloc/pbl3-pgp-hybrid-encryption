@@ -34,25 +34,25 @@ Phân công công việc của 3 thành viên được tổng hợp trong @tbl-t
 
 #figure(
   report-table(
-    columns: (1.2fr, 3.1fr, 0.8fr),
-    headers: ("Tên thành viên", "Nhiệm vụ phụ trách", "Hoàn thành"),
+    columns: (1.2fr, 3.0fr, 0.9fr),
+    headers: ("Tên thành viên", "Nhiệm vụ", "Phần trăm đóng góp"),
     rows: (
       (
         [Vũ Duy Dương \ (`106230007`)],
         [Trưởng nhóm; thiết kế kiến trúc Hybrid Encryption; cài đặt RSA thuần (Miller–Rabin, Euclid mở rộng); phát triển Web Simulator NiceGUI; tổng hợp báo cáo.],
-        align(center)[100%],
+        align(center)[34%],
       ),
       (
         [Huỳnh Thiện Lộc \ (`106230052`)],
         [Nghiên cứu AES-GCM (NIST SP 800-38D) và hàm băm GHASH trên $"GF"(2^(128))$; thiết kế và thực thi 3 kịch bản kiểm thử bảo mật và toàn vẹn.],
-        align(center)[100%],
+        align(center)[33%],
       ),
       (
         [Phan Vĩnh Sơn \ (`106230059`)],
         [Nghiên cứu TCP Socket; lập trình Client–Server (Alice/Bob) qua mạng LAN; cài đặt đóng khung tiền tố độ dài chống phân mảnh và đối chiếu SHA-256 fingerprint.],
-        align(center)[100%],
+        align(center)[33%],
       ),
     ),
   ),
-  caption: [Phân công nhiệm vụ của nhóm.],
+  caption: [Phân công nhiệm vụ của nhóm],
 ) <tbl-task-allocation>

@@ -8,8 +8,8 @@
   author-str: "Sinh viên thực hiện:\n- Vũ Duy Dương (106230007)\n- Huỳnh Thiện Lộc (106230052)\n- Phan Vĩnh Sơn (106230059)",
   affiliation-str: "Học phần: PBL3: Mạng máy tính\nGVHD: TS. Trần Thị Minh Hạnh\nĐà Nẵng, 2026",
   heading-color: rgb("#1e40af"),
-  heading-font: "Liberation Sans",
-  body-font: "Liberation Sans",
+  heading-font: "Times New Roman",
+  body-font: "Times New Roman",
 )
 
 #include "sections/00_abstract.typ"

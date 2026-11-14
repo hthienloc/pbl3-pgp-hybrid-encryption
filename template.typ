@@ -12,16 +12,16 @@
   affiliation-str: "PBL3: Mạng máy tính | GVHD: TS. Trần Thị Minh Hạnh | Đà Nẵng, 2026",
   language: "vi",
   heading-color: rgb("#1d4ed8"),
-  heading-font: "Liberation Sans",
-  body-font: "Liberation Sans",
+  heading-font: "Times New Roman",
+  body-font: "Times New Roman",
   body,
 ) = {
-  // Đồng bộ cấu hình lề & trang thống nhất cho toàn bộ báo cáo
-  let page-margin = (top: 2.5cm, bottom: 2.5cm, left: 2.8cm, right: 2.2cm)
+  // Đồng bộ cấu hình lề 2.54cm (1 inch) & cỡ chữ 13pt, giãn dòng ~1.3 theo mẫu
+  let page-margin = (top: 2.54cm, bottom: 2.54cm, left: 2.54cm, right: 2.54cm)
 
   set document(title: main-title + " - " + sub-title, author: author-str)
-  set text(lang: language, font: body-font, size: 11pt)
-  set par(justify: true, leading: 0.75em, spacing: 1.65em, first-line-indent: 0em)
+  set text(lang: language, font: body-font, size: 13pt)
+  set par(justify: true, leading: 0.65em, spacing: 1.2em, first-line-indent: 0em)
 
   // 1. TRANG BÌA (CHUẨN BÌA ĐẠI HỌC VIỆT NAM – KHUNG VIỀN ĐÔI & LOGO)
   {
@@ -158,14 +158,18 @@
     header-ascent: 1.5em,
   )
 
-  // Định dạng tiêu đề theo phong cách basic-report
+  // Định dạng tiêu đề
   set heading(numbering: "1.")
   show heading: set text(font: heading-font, fill: heading-color, weight: "bold")
   show heading: set par(justify: false)
-  // Mỗi section (heading cấp 1) bắt đầu ở trang mới; weak tránh tạo trang trống
-  show heading.where(level: 1): it => pagebreak(weak: true) + v(2.5em, weak: true) + it + v(0.8em, weak: true)
-  show heading.where(level: 2): it => v(1.5em, weak: true) + it + v(0.5em, weak: true)
-  show heading.where(level: 3): it => v(1.2em, weak: true) + it + v(0.4em, weak: true)
+  show heading.where(level: 1): it => v(1.5em, weak: true) + it + v(0.6em, weak: true)
+  show heading.where(level: 2): it => v(1.2em, weak: true) + it + v(0.4em, weak: true)
+  show heading.where(level: 3): it => v(1em, weak: true) + it + v(0.3em, weak: true)
+
+  // Định dạng chú thích Hình (dưới) và Bảng (trên) theo mẫu: "Hình 1. ...", "Bảng 1. ..."
+  set figure.caption(separator: [. ])
+  show figure.where(kind: table): set figure.caption(position: top)
+  show figure.caption: set text(size: 11.5pt)
 
   // 3. MỤC LỤC (CÙNG LỀ VÀ PHONG CÁCH)
   show outline.entry.where(level: 1): it => {
