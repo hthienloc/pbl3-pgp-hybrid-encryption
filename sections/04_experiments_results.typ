@@ -4,16 +4,17 @@
 = Thực nghiệm và kết quả
 
 == Môi trường thực nghiệm và kiến trúc mã nguồn
-Hệ thống phần mềm được tổ chức phân tầng rõ ràng với nguyên tắc _"Single Source of Truth"_: toàn bộ các giải thuật toán học cốt lõi chỉ được cài đặt duy nhất tại thư mục `algorithms/` và được tái sử dụng đồng thời bởi các kịch bản dòng lệnh (CLI), hệ thống truyền thông Socket mạng TCP và giao diện trực quan Web Simulator NiceGUI.
+Hệ thống phần mềm được tổ chức phân tầng rõ ràng với lõi thuật toán mật mã đặt tại thư mục `algorithms/` và được dùng chung bởi giao diện mô phỏng trực quan NiceGUI, bên cạnh các kịch bản kiểm thử CLI và Socket TCP:
 - `algorithms/euclid.py`: Cài đặt thuật toán Euclid mở rộng (`extended_gcd`) và hàm tìm phần tử nghịch đảo mô-đun (`mod_inverse`).
-- `algorithms/rsa.py`: Cài đặt hàm kiểm tra số nguyên tố Miller–Rabin (`is_prime`), sinh số nguyên tố ngẫu nhiên (`generate_prime`), sinh cặp khóa RSA (`generate_rsa_keys`), mã hóa (`rsa_encrypt`) và giải mã (`rsa_decrypt`).
-- `algorithms/aes_gcm.py`: Cài đặt hàm mã hóa `aes_gcm_encrypt` và giải mã có kiểm thực `aes_gcm_decrypt` dựa trên thư viện chuẩn PyCryptodome.
-- `algorithms/hybrid_pgp.py`: Đóng gói và giải mã trọn gói luồng dữ liệu lai PGP giữa Alice và Bob.
-- `PGP_RSA_AES_Socket_3_files/`: Chứa bộ đôi `server_bob.py` (TCP Server) và `client_alice.py` (TCP Client) phục vụ truyền thông qua mạng LAN.
+- `algorithms/rsa.py`: Cài đặt hàm kiểm tra số nguyên tố Miller–Rabin (`is_prime` với $k = 20$), sinh số nguyên tố ngẫu nhiên (`generate_prime`), sinh cặp khóa RSA (`generate_rsa_keys`), mã hóa (`rsa_encrypt`) và giải mã (`rsa_decrypt`).
+- `algorithms/aes_gcm.py`: Cài đặt hàm mã hóa `aes_gcm_encrypt` và giải mã có kiểm thực `aes_gcm_decrypt` dựa trên thư viện PyCryptodome.
+- `algorithms/hybrid_pgp.py`: Đóng gói và giải mã trọn gói luồng dữ liệu lai PGP giữa Alice và Bob (`alice_encrypt_package`, `bob_decrypt_package`).
+- `PGP_RSA_AES_Socket_3_files/`: Chứa `pgp_crypto.py`, `server_bob.py` (TCP Server, khóa RSA 512-bit) và `client_alice.py` (TCP Client) phục vụ truyền thông qua mạng LAN.
+- `src/hybrid_demo.py`: Kịch bản dòng lệnh (CLI) độc lập chạy 3 kịch bản kiểm thử bảo mật (kết hợp `src/rsa.py`).
 - `src/gui_nicegui.py`: Ứng dụng web mô phỏng tương tác thời gian thực hai chế độ.
 
 == Ví dụ số học minh họa thuật toán RSA trên không gian nhỏ
-Để kiểm chứng tính đúng đắn toán học của thuật toán RSA cài đặt trong `algorithms/rsa.py` bằng các phép tính thủ công trên giấy, nhóm đã thực hiện tính toán thử nghiệm trên không gian số nhỏ với các tham số mô tả trong Bảng 5.
+Để kiểm chứng tính đúng đắn toán học của thuật toán RSA cài đặt trong `algorithms/rsa.py` bằng các phép tính thủ công trên giấy, nhóm đã thực hiện tính toán thử nghiệm trên không gian số nhỏ với các tham số mô tả trong @tbl-rsa-example.
 
 #figure(
   report-table(
@@ -29,18 +30,18 @@ Hệ thống phần mềm được tổ chức phân tầng rõ ràng với nguy
     ),
   ),
   caption: [Tham số thực nghiệm tính toán số học trên không gian nhỏ của RSA.],
-)
+) <tbl-rsa-example>
 
-Chu trình biến đổi dữ liệu bản rõ – bản mã giữa Alice và Bob trong ví dụ số học RSA trên không gian nhỏ được thể hiện trong Hình 4.
+Chu trình biến đổi dữ liệu bản rõ – bản mã giữa Alice và Bob trong ví dụ số học RSA trên không gian nhỏ được thể hiện trong @fig-rsa-numeric-example.
 
 #v(0.3em)
 #align(center)[
-  #fig-rsa-numeric-example
+  #fig-rsa-numeric-example <fig-rsa-numeric-example>
 ]
 #v(0.3em)
 
 == Kết quả thực nghiệm 3 kịch bản kiểm thử an toàn
-Nhóm đã xây dựng bộ 3 kịch bản kiểm thử thực nghiệm toàn diện trong `src/hybrid_demo.py` để đánh giá khả năng tự động khôi phục thông điệp và năng lực bắt lỗi vi phạm toàn vẹn dữ liệu. Bảng 6 tổng hợp kết quả quan sát của cả 3 kịch bản thử nghiệm.
+Nhóm đã xây dựng bộ 3 kịch bản kiểm thử thực nghiệm trong `src/hybrid_demo.py` để đánh giá khả năng tự động khôi phục thông điệp và năng lực bắt lỗi vi phạm toàn vẹn dữ liệu. @tbl-test-cases tổng hợp kết quả quan sát của cả 3 kịch bản thử nghiệm.
 
 #figure(
   report-table(
@@ -53,51 +54,55 @@ Nhóm đã xây dựng bộ 3 kịch bản kiểm thử thực nghiệm toàn di
     ),
   ),
   caption: [Tổng hợp kết quả thực nghiệm 3 kịch bản kiểm thử bảo mật và toàn vẹn.],
-)
+) <tbl-test-cases>
 
-Nhật ký thực thi thực tế xuất từ màn hình dòng lệnh khi chạy chương trình:
+Nhật ký thực thi thực tế xuất từ màn hình dòng lệnh khi chạy `python3 src/hybrid_demo.py`:
 
 ```text
 =================================================================
 DEMO PGP HYBRID ENCRYPTION (RSA + AES-GCM)
 =================================================================
-[ALICE] Thông điệp gốc: "Hello cô Hạnh, bọn em là nhóm 7!"
+
+[ALICE] Thông điệp gốc: "Báo cáo tiến độ Nhóm 7: PGP Hybrid Encryption hoạt động chính xác!"
 [ALICE] Mã hóa hoàn tất:
-  + Encrypted Session Key (RSA) : 0x4f8a92bc71e54910e9f1a23cd... (256-bit)
-  + Nonce (AES-GCM)             : e81b93f01c725d19420b92e1 (12 bytes)
-  + Ciphertext (AES)            : 9c2a71f08e334d... (34 bytes)
-  + Authentication Tag          : 3a9f02c771e84210d9f2a89c (16 bytes)
+  + Encrypted Session Key (RSA) : 0x8c47f6f87ccc179734ec19b039d026691e...
+  + Nonce (AES-GCM)             : 87e86fc1f28aaaa24fc05fff66b1185e
+  + Ciphertext (AES)            : 721796208643fdf15c2393663cd9990281f5c915525f810a... (81 bytes)
+  + Authentication Tag          : 04a4f16dfcb8b1f9e3a5e8825b17b0c9
+
 -----------------------------------------------------------------
 TEST CASE 01: Bob dùng đúng Private Key của mình
-[BOB] Khôi phục thành công: "Hello cô Hạnh, bọn em là nhóm 7!"
->>> KẾT QUẢ: [PASSED] Dữ liệu được khôi phục chính xác 100%!
+[BOB] Giải mã thành công: "Báo cáo tiến độ Nhóm 7: PGP Hybrid Encryption hoạt động chính xác!"
+>>> KẾT QUẢ: [PASSED] Khôi phục chính xác 100% dữ liệu.
+
 -----------------------------------------------------------------
 TEST CASE 02: Kẻ tấn công sửa đổi 1 byte trong Ciphertext
-[BOB] CẢNH BÁO AN TOÀN: Phát hiện dữ liệu bị can thiệp trên đường truyền!
-      Ngoại lệ bắt được: MAC check failed (Authentication Tag không khớp)
->>> KẾT QUẢ: [PASSED] Hệ thống đã hủy gói tin và chặn đứng sửa đổi.
+[BOB] CẢNH BÁO AN TOÀN: Phát hiện dữ liệu bị can thiệp!
+      Chi tiết ngoại lệ: MAC check failed (MAC / Authentication Tag không khớp)
+>>> KẾT QUẢ: [PASSED] Chặn thành công tấn công sửa đổi bản mã.
+
 -----------------------------------------------------------------
-TEST CASE 03: Giải mã bằng Private Key không hợp lệ (Khóa của bên thứ ba)
+TEST CASE 03: Giải mã bằng Private Key không hợp lệ (Khóa của Eve)
 [EVE] Thất bại: Giải mã RSA ra Session Key sai -> AES-GCM từ chối xác thực.
-      Ngoại lệ bắt được: MAC check failed
+      Chi tiết ngoại lệ: MAC check failed (Sai khóa phiên dẫn đến kiểm thực thất bại)
 >>> KẾT QUẢ: [PASSED] Từ chối truy cập trái phép khi sai khóa.
 =================================================================
 ```
 
 == Thực nghiệm truyền thông qua Socket TCP giữa 2 máy mạng LAN
-Để tiến gần hơn tới bài toán thực tế của môn học Mạng máy tính, nhóm đã thực hiện kết nối vật lý giữa hai máy tính xách tay trong cùng mạng Wi-Fi cục bộ:
-- *Máy B (Bob – Server):* Khởi động `server_bob.py`, lắng nghe kết nối tại địa chỉ `0.0.0.0:5000`. Màn hình tự động in ra địa chỉ IP LAN của máy (ví dụ: `192.168.1.3`).
-- *Máy A (Alice – Client):* Khởi động `client_alice.py 192.168.1.3`. Chương trình tự động gửi lệnh truy vấn `GET_PUBLIC_KEY` để lấy Public Key của Bob, in dấu vân tay SHA-256 fingerprint để người dùng đối chiếu chéo qua kênh thoại. Sau đó, Alice nhập thông điệp bản rõ và chọn một trong 3 chế độ gửi: gửi chuẩn, giả lập sửa Ciphertext, hoặc giả lập sai khóa phiên. Toàn bộ quá trình gửi nhận diễn ra tức thì với độ trễ mạng dưới 15 ms và máy Bob hiển thị trực quan thông điệp nhận được cùng cảnh báo màu sắc nếu bị can thiệp.
+Để tiến gần hơn tới bài toán thực tế của môn học Mạng máy tính, nhóm đã thực hiện kết nối giữa hai máy tính trong cùng mạng Wi-Fi cục bộ:
+- *Máy B (Bob – Server):* Khởi động `server_bob.py`, sinh cặp khóa RSA 512-bit và lắng nghe kết nối tại địa chỉ `0.0.0.0:5000`. Màn hình tự động in ra địa chỉ IP LAN của máy (ví dụ: `192.168.1.3`) và chuỗi SHA-256 fingerprint của Public Key.
+- *Máy A (Alice – Client):* Khởi động `client_alice.py 192.168.1.3`. Chương trình tự động gửi lệnh truy vấn `GET_PUBLIC_KEY` để lấy Public Key của Bob, in dấu vân tay SHA-256 fingerprint để người dùng đối chiếu chéo. Sau đó, Alice nhập thông điệp bản rõ và chọn một trong 3 chế độ gửi: gửi chuẩn, giả lập sửa Ciphertext, hoặc giả lập sai khóa phiên. Toàn bộ quá trình gửi nhận diễn ra tức thì với độ trễ mạng LAN dưới 15 ms và máy Bob hiển thị trực quan thông điệp nhận được cùng cảnh báo nếu bị can thiệp.
 
-Quy trình bắt tay trao đổi khóa công khai và truyền nhận bản tin PGP Hybrid qua kết nối TCP Socket giữa hai máy tính được tổng hợp trong Hình 5.
+Quy trình bắt tay trao đổi khóa công khai và truyền nhận bản tin PGP Hybrid qua kết nối TCP Socket giữa hai máy tính được tổng hợp trong @fig-socket-sequence.
 
 #v(0.3em)
 #align(center)[
-  #fig-socket-sequence
+  #fig-socket-sequence <fig-socket-sequence>
 ]
 #v(0.3em)
 
 == Giao diện mô phỏng trực quan NiceGUI (Web Simulator)
-Nhằm phục vụ báo cáo bảo vệ đồ án trước hội đồng một cách trực quan và khoa học, nhóm đã xây dựng ứng dụng Web Simulator bằng NiceGUI (chạy tại `http://localhost:8080`) với hai chế độ màn hình bổ trợ hoàn hảo cho nhau:
-+ *Chế độ "Mô Phỏng PGP (Tích Hợp)":* Trực quan hóa góc nhìn phân tán theo 3 cột thực thể: Alice (Client) $arrow.r$ Kênh Mạng TCP $arrow.r$ Bob (Server). Giao diện tích hợp sơ đồ 8 khối dữ liệu động đổi màu theo thời gian thực (vàng: đang tính toán, xanh: thành công, đỏ: lỗi can thiệp) và bảng Terminal console ở đáy màn hình có thể kéo giãn linh hoạt để trình chiếu từng bước biến đổi đại số mà không cần mở mã nguồn.
-+ *Chế độ "Chi Tiết Từng Khối Thuật Toán":* Trực quan hóa góc nhìn chiều sâu toán học từ trên xuống dưới gồm 5 khối liên hoàn: Khối 1 (Tạo khóa RSA Bob) $arrow.r$ Khối 2 (Mã hóa AES-GCM Alice) $arrow.r$ Khối 3 (Mã hóa RSA khóa $K$) $arrow.r$ Khối 4 (Giải mã RSA khóa $K$) $arrow.r$ Khối 5 (Giải mã AES-GCM khôi phục bản rõ thông điệp $M$). Giao diện này đáp ứng chuẩn xác 100% các góp ý chỉnh sửa của Giảng viên hướng dẫn: xóa bỏ toàn bộ từ ngữ đề mục báo cáo gây rối mắt; loại bỏ hoàn toàn số nhỏ minh họa 125 để nối liền trực tiếp giá trị số nguyên 128-bit của khóa phiên $K$ thật từ trên xuống dưới; thống nhất một ký hiệu duy nhất ($M$ luôn là thông điệp gốc, $K$ luôn là khóa phiên); và đặc biệt là khép kín hoàn chỉnh quy trình tại Khối 5 bằng việc dùng chính khóa phiên vừa giải mã để khôi phục lại chuỗi thông điệp ban đầu `"Hello cô Hạnh"`.
+Nhằm trực quan hóa luồng dữ liệu và từng bước biến đổi toán học của thuật toán, nhóm đã xây dựng ứng dụng Web Simulator bằng NiceGUI (chạy tại `http://localhost:8080`) với hai chế độ màn hình:
++ *Chế độ "Mô Phỏng PGP (Tích Hợp)":* Trực quan hóa góc nhìn phân tán theo 3 cột thực thể: Alice (Client) $arrow.r$ Kênh Mạng TCP $arrow.r$ Bob (Server). Giao diện tích hợp sơ đồ 8 khối dữ liệu động đổi màu theo thời gian thực (vàng: đang tính toán, xanh: thành công, đỏ: lỗi can thiệp) và bảng Terminal console ở đáy màn hình có thể kéo giãn linh hoạt để quan sát từng bước biến đổi đại số.
++ *Chế độ "Chi Tiết Từng Khối Thuật Toán":* Trực quan hóa góc nhìn chiều sâu toán học từ trên xuống dưới gồm 5 khối liên hoàn: Khối 1 (Tạo khóa RSA Bob) $arrow.r$ Khối 2 (Mã hóa AES-GCM Alice) $arrow.r$ Khối 3 (Mã hóa RSA khóa $K$) $arrow.r$ Khối 4 (Giải mã RSA khóa $K$) $arrow.r$ Khối 5 (Giải mã AES-GCM khôi phục bản rõ thông điệp $M$). Giao diện sử dụng trực tiếp giá trị số nguyên 128-bit của khóa phiên $K$ thật xuyên suốt từ Khối 2 đến Khối 5, thống nhất ký hiệu ($M$ là bản rõ, $K$ là khóa phiên) và khép kín quy trình bằng việc dùng khóa phiên đã giải mã để khôi phục nguyên vẹn thông điệp đầu vào.

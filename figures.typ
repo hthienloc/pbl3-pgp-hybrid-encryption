@@ -75,7 +75,7 @@
         aes_dec -> m_out     [style=solid];
       }
 
-      cdata -> b_cdata       [style=dotted, label=" Kênh mạng"];
+      cdata -> b_cdata       [style=dotted, label=" Kênh mạng\n(+ Nonce, Tag)"];
       ckey -> b_ckey         [style=dotted];
     }
     ```,
@@ -203,24 +203,24 @@
   caption: [Sơ đồ chu trình xử lý dữ liệu và khóa trong ví dụ số học RSA giữa Alice và Bob],
 )
 
-// --- HÌNH 4: CẤU TRÚC GÓI DỮ LIỆU ĐÓNG GÓI VÀ PHÂN TÍCH CÚ PHÁP TẠI BỘ GIẢI MÃ BOB (DÙNG DIAGRAPH) ---
+// --- HÌNH 3: CẤU TRÚC KHUNG GÓI TIN VÀ PHÂN TÍCH CÚ PHÁP TẠI BỘ GIẢI MÃ BOB (DÙNG DIAGRAPH) ---
 #let fig-packet-layout = figure(
   raw-render(
     ```dot
     digraph {
       rankdir=TB;
-      nodesep=0.18;
+      nodesep=0.16;
       ranksep=0.35;
       node [shape=box, style="rounded,filled", fillcolor="white", penwidth=0.8, margin="0.08,0.05"];
       edge [penwidth=0.8, arrowsize=0.7, color="black"];
 
       subgraph cluster_packet {
-        label="Cấu trúc khung gói tin PGP (Byte Stream)";
+        label="Khung gói tin TCP: [4B Big-Endian Length] + [JSON Envelope UTF-8]";
         style="rounded,dashed";
         color="#64748b";
         fontsize=10;
-        { rank=same; f_key; f_nonce; f_data; f_tag; }
-        f_key -> f_nonce -> f_data -> f_tag [style=invis];
+        { rank=same; f_len; f_key; f_nonce; f_data; f_tag; }
+        f_len -> f_key -> f_nonce -> f_data -> f_tag [style=invis];
       }
 
       subgraph cluster_bob {
@@ -228,10 +228,11 @@
         style="rounded,dashed";
         color="#64748b";
         fontsize=10;
-        { rank=same; p_key; p_nonce; p_data; p_tag; }
-        p_key -> p_nonce -> p_data -> p_tag [style=invis];
+        { rank=same; p_len; p_key; p_nonce; p_data; p_tag; }
+        p_len -> p_key -> p_nonce -> p_data -> p_tag [style=invis];
       }
 
+      f_len -> p_len;
       f_key -> p_key;
       f_nonce -> p_nonce;
       f_data -> p_data;
@@ -239,16 +240,18 @@
     }
     ```,
     labels: (
-      "f_key": align(center)[*0 .. 255 (256B)*\ *Khóa RSA* $C_("key")$\ #text(size: 7.5pt)[Khóa phiên mã hóa]],
-      "f_nonce": align(center)[*256 .. 267 (12B)*\ *Nonce / IV*\ #text(size: 7.5pt)[Vector GCM]],
-      "f_data": align(center)[*268 .. 268+L-1*\ *Bản mã* $C_("data")$\ #text(size: 7.5pt)[Dữ liệu AES-GCM]],
-      "f_tag": align(center)[*Cuối cùng (16B)*\ *Auth Tag*\ #text(size: 7.5pt)[Mã băm GHASH]],
-      "p_key": align(center)[*1. Giải mã RSA*\ `rsa_decrypt()`\ #text(size: 7.5pt)[Lấy khóa $K$]],
-      "p_nonce": align(center)[*2. Nạp IV*\ `AES.new(K, ...)`\ #text(size: 7.5pt)[Nạp nonce]],
-      "p_data": align(center)[*3. Giải mã AES*\ `decrypt()`\ #text(size: 7.5pt)[Khôi phục $M$]],
-      "p_tag": align(center)[*4. Kiểm thực*\ `verify(tag)`\ #text(size: 7.5pt)[Chống giả mạo]],
+      "f_len": align(center)[*4 Bytes (!I)*\ *Độ dài JSON*\ #text(size: 7.5pt)[Tiền tố Big-Endian]],
+      "f_key": align(center)[*`enc_session_key`*\ *Khóa RSA* $C_("key")$\ #text(size: 7.5pt)[Số nguyên / Hex]],
+      "f_nonce": align(center)[*`nonce` (12B)*\ *Nonce / IV*\ #text(size: 7.5pt)[Base64 / Hex]],
+      "f_data": align(center)[*`ciphertext`*\ *Bản mã* $C_("data")$\ #text(size: 7.5pt)[Base64 / Hex]],
+      "f_tag": align(center)[*`auth_tag` (16B)*\ *Auth Tag*\ #text(size: 7.5pt)[Base64 / Hex]],
+      "p_len": align(center)[*1. Đọc khung*\ `recv_exact(4)`\ #text(size: 7.5pt)[Tách JSON]],
+      "p_key": align(center)[*2. Giải mã RSA*\ `rsa_decrypt()`\ #text(size: 7.5pt)[Lấy khóa $K$]],
+      "p_nonce": align(center)[*3. Nạp IV*\ `AES.new(K, ...)`\ #text(size: 7.5pt)[Nạp nonce]],
+      "p_data": align(center)[*4. Giải mã AES*\ `decrypt()`\ #text(size: 7.5pt)[Khôi phục $M$]],
+      "p_tag": align(center)[*5. Kiểm thực*\ `verify(tag)`\ #text(size: 7.5pt)[Chống giả mạo]],
     ),
-    width: 95%,
+    width: 98%,
   ),
   caption: [Sơ đồ cấu trúc khung gói tin (Packet Framing) và luồng phân tích cú pháp tại bộ nhận của Bob],
 )

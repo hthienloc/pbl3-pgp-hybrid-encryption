@@ -16,25 +16,25 @@ Chuẩn mật mã khóa công khai PKCS #1 / RFC 8017 @rfc8017 quy định chi t
 Năm 1991, Phil Zimmermann phát triển phần mềm PGP (Pretty Good Privacy) nhằm cung cấp công cụ bảo vệ quyền riêng tư cá nhân khi trao đổi thư điện tử qua mạng Internet. Sau đó, Tổ chức Đặc trách Kỹ thuật Internet (IETF) đã chuẩn hóa công nghệ này thành bộ chuẩn mở OpenPGP qua RFC 4880 @rfc4880 và mới nhất là RFC 9580 @rfc9580. OpenPGP không xây dựng một thuật toán mật mã riêng biệt mà đóng vai trò như một bộ giao thức tích hợp các giải thuật mật mã tiêu chuẩn: sử dụng mã hóa đối xứng (AES, Triple-DES, IDEA) để bảo vệ thân thư điện tử; sử dụng mật mã khóa công khai (RSA, ElGamal, ECC) để mã hóa khóa phiên; và sử dụng hàm băm (SHA-256, SHA-512) kết hợp RSA để tạo chữ ký điện tử. Đặc biệt, OpenPGP tiên phong xây dựng mô hình mạng lưới tín nhiệm (Web of Trust), cho phép người dùng tự ký chéo khóa công khai của nhau để xác thực danh tính mà không phụ thuộc vào một cơ quan cấp chứng chỉ tập trung (CA).
 
 == So sánh kỹ thuật và lý do kết hợp mã hóa lai
-Bảng 2 so sánh chi tiết các đặc tính kỹ thuật cốt lõi giữa hệ mật mã đối xứng AES và hệ mật mã bất đối xứng RSA. Qua Bảng 2, ta thấy rõ ràng mỗi hệ mật đều sở hữu những ưu thế độc nhất nhưng lại đi kèm với những hạn chế lớn không thể giải quyết độc lập.
+@tbl-aes-rsa-compare so sánh chi tiết các đặc tính kỹ thuật cốt lõi giữa hệ mật mã đối xứng AES và hệ mật mã bất đối xứng RSA. Qua đó có thể thấy mỗi hệ mật đều sở hữu những ưu thế độc nhất nhưng lại đi kèm với những hạn chế lớn không thể giải quyết độc lập.
 
 #figure(
   report-table(
     columns: (1.1fr, 1.5fr, 1.5fr),
-    headers: ("Tiêu chí so sánh", "AES-128-GCM (Đối xứng)", "RSA-256 (Bất đối xứng)"),
+    headers: ("Tiêu chí so sánh", "AES-128-GCM (Đối xứng)", "RSA-256 / 512 (Bất đối xứng)"),
     rows: (
       ([Số lượng khóa], [Dùng duy nhất 1 khóa phiên bí mật $K$ chung cho cả hai đầu.], [Dùng cặp khóa: Public Key $(e, n)$ và Private Key $(d, n)$.]),
       ([Tốc độ & Chi phí tính toán], [Cực kỳ nhanh; chi phí phần cứng thấp nhờ các phép toán XOR và tra bảng S-box.], [Rất chậm; đòi hỏi các phép nhân và lũy thừa mô-đun trên số nguyên lớn hàng trăm bit.]),
       ([Xử lý dữ liệu lớn], [Tối ưu hóa tuyệt vời cho các tệp tin, dòng video và luồng truyền thông mạng lớn.], [Không khả thi; chỉ mã hóa được dữ liệu có giá trị số học nhỏ hơn modulus $n$.]),
       ([Phân phối khóa qua mạng], [Rất khó khăn; đòi hỏi phải có kênh truyền an toàn sẵn từ trước để chia sẻ khóa $K$.], [Rất dễ dàng; khóa công khai được phát tán tự do qua mạng mà không sợ lộ.]),
-      ([Tính năng toàn vẹn], [Tích hợp sẵn qua hàm băm GHASH và Authentication Tag 128-bit.], [Đòi hỏi cơ chế đệm dữ liệu ngẫu nhiên (RSA-OAEP) hoặc kết hợp hàm băm.]),
+      ([Toàn vẹn & Chống sửa đổi], [Tích hợp sẵn qua hàm băm GHASH và Authentication Tag 128-bit.], [Thuần túy không tự kiểm thực toàn vẹn; cần kết hợp chữ ký số (RSA-PSS + hàm băm) và dùng RSA-OAEP để bảo mật IND-CCA2.]),
     ),
   ),
   caption: [So sánh đặc tính kỹ thuật giữa hệ mật mã đối xứng AES và bất đối xứng RSA.],
-)
+) <tbl-aes-rsa-compare>
 
-Từ những phân tích trên, giải pháp *Mã hóa lai (Hybrid Encryption)* ra đời như một kết hợp hoàn hảo theo nguyên lý: _"AES đảm nhận việc mã hóa dữ liệu lớn, RSA đảm nhận việc bảo vệ và vận chuyển khóa đối xứng"_. Công thức toán học tổng quát biểu diễn gói tin PGP Hybrid được xác định bởi:
+Từ những phân tích trên, giải pháp *Mã hóa lai (Hybrid Encryption)* ra đời theo nguyên lý: _"AES đảm nhận việc mã hóa dữ liệu lớn, RSA đảm nhận việc bảo vệ và vận chuyển khóa đối xứng"_. Công thức tổng quát biểu diễn gói tin PGP Hybrid được xác định bởi:
 
 $ "PGP_Packet" = { "RSA"_(e_B)(K), quad "AES"_K (M) } $
 
-Trong đó, $e_B$ là khóa công khai của người nhận Bob, $K$ là khóa phiên ngẫu nhiên dùng một lần do Alice khởi tạo, và $M$ là thông điệp bản rõ ban đầu. Nhờ mô hình này, hệ thống đạt được đồng thời tốc độ mã hóa dữ liệu cấp phần cứng của AES và tính tiện lợi, an toàn tuyệt đối trong việc phân phối khóa qua không gian mạng mở của RSA.
+Trong đó, $e_B$ là khóa công khai của người nhận Bob, $K$ là khóa phiên ngẫu nhiên dùng một lần do Alice khởi tạo, và $M$ là thông điệp bản rõ ban đầu. Nhờ mô hình này, hệ thống khắc phục được sự đánh đổi giữa tốc độ xử lý dữ liệu lớn của AES và khả năng phân phối khóa qua kênh mở của RSA (lưu ý: kích thước khóa RSA 256/512-bit trong đồ án phục vụ mục đích học thuật và mô phỏng; hệ thống triển khai thực tế cần sử dụng RSA $\ge 2048$-bit kèm đệm RSA-OAEP).
