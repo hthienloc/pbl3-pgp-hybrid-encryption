@@ -13,89 +13,84 @@
   stroke-axis,
 )
 
-// --- HÌNH 1: NGUYÊN LÝ MÃ HÓA VÀ GIẢI MÃ LAI RSA - AES (DÙNG DIAGRAPH AUTO-LAYOUT DỌC) ---
+#let f-diagram(..args) = {
+  set par(justify: false)
+  diagram(..args)
+}
+
+// --- HÌNH 1: NGUYÊN LÝ MÃ HÓA VÀ GIẢI MÃ LAI RSA - AES (FLETCHER GRID) ---
 #let fig-hybrid-overview = figure(
-  raw-render(
-    ```dot
-    digraph {
-      rankdir=TB;
-      nodesep=0.35;
-      ranksep=0.38;
-      node [penwidth=0.8, margin="0.08,0.05"];
-      edge [penwidth=0.8, arrowsize=0.7, color="black"];
+  f-diagram(
+    spacing: (10mm, 7mm),
+    node-stroke: 0.7pt + luma(60),
+    node-corner-radius: 3pt,
+    edge-stroke: 0.75pt + black,
+    {
+      // Styles
+      let box-proc = (fill: rgb("#f1f5f9"), width: 32mm, inset: 5pt)
+      let box-data = (fill: white, width: 32mm, inset: 5pt)
+      let box-key = (fill: white, stroke: (paint: luma(80), thickness: 0.7pt, dash: "dashed"), shape: fletcher.shapes.pill, width: 32mm, inset: 5pt)
 
-      // Quy ước hình dạng phân định Input/Output, Khóa và Khối xử lý
-      // Input / Output dữ liệu: hình bình hành (parallelogram)
-      m        [shape=parallelogram, style="filled", fillcolor="#ffffff"];
-      cdata    [shape=parallelogram, style="filled", fillcolor="#ffffff"];
-      ckey     [shape=parallelogram, style="filled", fillcolor="#ffffff"];
-      b_cdata  [shape=parallelogram, style="filled", fillcolor="#ffffff"];
-      b_ckey   [shape=parallelogram, style="filled", fillcolor="#ffffff"];
-      m_out    [shape=parallelogram, style="filled", fillcolor="#ffffff"];
+      // Alice cluster
+      node((0, 0), align(center)[*Bản rõ gốc*\ $M$], ..box-data, name: <m>)
+      node((1, 0), align(center)[*Session Key*\ $K$ ngẫu nhiên], ..box-key, name: <k>)
+      node((2, 0), align(center)[*Public Key Bob*\ $(e_B, n)$], ..box-key, name: <pub>)
 
-      // Khóa và tham số mã hóa: hình ellipse viền nét đứt
-      key      [shape=ellipse, style="dashed,filled", fillcolor="#ffffff"];
-      pub      [shape=ellipse, style="dashed,filled", fillcolor="#ffffff"];
-      priv     [shape=ellipse, style="dashed,filled", fillcolor="#ffffff"];
-      key_out  [shape=ellipse, style="dashed,filled", fillcolor="#ffffff"];
+      node((0, 1), align(center)[*Mã hóa AES*\ Dùng khóa $K$], ..box-proc, name: <aes_e>)
+      node((2, 1), align(center)[*Mã hóa RSA*\ Bảo vệ $K$], ..box-proc, name: <rsa_e>)
 
-      // Khối xử lý logic (Logic Processing): hình hộp góc bo tròn có màu nền
-      aes_enc  [shape=box, style="rounded,filled", fillcolor="#f1f5f9"];
-      rsa_enc  [shape=box, style="rounded,filled", fillcolor="#f1f5f9"];
-      rsa_dec  [shape=box, style="rounded,filled", fillcolor="#f1f5f9"];
-      aes_dec  [shape=box, style="rounded,filled", fillcolor="#f1f5f9"];
+      node((0, 2), align(center)[*Bản mã dữ liệu*\ $C_("data")$], ..box-data, name: <cd>)
+      node((2, 2), align(center)[*Khóa phiên mã hóa*\ $C_("key")$], ..box-data, name: <ck>)
 
-      subgraph cluster_alice {
-        label="Phía Alice (Mã hóa)";
-        labeljust="l";
-        style="rounded,dashed";
-        color="#64748b";
-        fontsize=10;
-        { rank=same; m; key; pub; }
-        m -> aes_enc         [style=solid];
-        key -> aes_enc       [style=dashed];
-        key -> rsa_enc       [style=dashed];
-        pub -> rsa_enc       [style=dashed];
-        aes_enc -> cdata     [style=solid];
-        rsa_enc -> ckey      [style=solid];
-      }
+      node(
+        enclose: (<m>, <pub>, <cd>, <ck>),
+        stroke: (paint: rgb("#64748b"), thickness: 0.7pt, dash: "dashed"),
+        fill: none,
+        inset: 10pt,
+        corner-radius: 5pt,
+        name: <alice_box>,
+      )
+      node((0, -0.52), text(size: 8.5pt, weight: "bold", fill: rgb("#475569"))[Phía Alice (Mã hóa)], stroke: none, fill: white, inset: 2pt)
 
-      subgraph cluster_bob {
-        label="Phía Bob (Giải mã)";
-        labeljust="l";
-        style="rounded,dashed";
-        color="#64748b";
-        fontsize=10;
-        { rank=same; b_cdata; b_ckey; priv; }
-        b_cdata -> aes_dec   [style=solid];
-        b_ckey -> rsa_dec    [style=solid];
-        priv -> rsa_dec      [style=dashed];
-        rsa_dec -> key_out   [style=dashed];
-        key_out -> aes_dec   [style=dashed];
-        aes_dec -> m_out     [style=solid];
-      }
+      edge(<m>, <aes_e>, "-|>")
+      edge(<k>, (1, 0.5), (0.35, 0.5), <aes_e>, "--|>")
+      edge(<k>, (1, 0.5), (1.65, 0.5), <rsa_e>, "--|>")
+      edge(<pub>, <rsa_e>, "--|>")
+      edge(<aes_e>, <cd>, "-|>")
+      edge(<rsa_e>, <ck>, "-|>")
 
-      cdata -> b_cdata       [style=dotted, label=" Kênh mạng\n(+ Nonce, Tag)"];
-      ckey -> b_ckey         [style=dotted];
-    }
-    ```,
-    labels: (
-      "m": align(center)[*Bản rõ gốc*\ $M$],
-      "key": align(center)[*Session Key*\ $K$ ngẫu nhiên],
-      "pub": align(center)[*Public Key Bob*\ $(e_B, n)$],
-      "aes_enc": align(center)[*Mã hóa AES*\ Dùng khóa $K$],
-      "rsa_enc": align(center)[*Mã hóa RSA*\ Bảo vệ $K$],
-      "cdata": align(center)[*Bản mã dữ liệu*\ $C_("data")$],
-      "ckey": align(center)[*Khóa phiên mã hóa*\ $C_("key")$],
-      "b_cdata": align(center)[*Bản mã dữ liệu*\ $C_("data")$],
-      "b_ckey": align(center)[*Khóa phiên mã hóa*\ $C_("key")$],
-      "priv": align(center)[*Private Key Bob*\ $(d_B, n)$],
-      "rsa_dec": align(center)[*Giải mã RSA*\ Lấy lại $K$],
-      "key_out": align(center)[*Session Key*\ $K$ khôi phục],
-      "aes_dec": align(center)[*Giải mã AES*\ Dùng khóa $K$],
-      "m_out": align(center)[*Bản rõ khôi phục*\ $M' = M$],
-    ),
-    width: 72%,
+      // Network transmission
+      edge(<cd>, <bcd>, "..|>")
+      edge(<ck>, <bck>, "..|>")
+      node((1, 2.6), text(size: 8pt, fill: luma(60))[Kênh mạng (+ Nonce, Tag)], stroke: none, fill: white, inset: 2pt)
+
+      // Bob cluster
+      node((0, 3.75), align(center)[*Bản mã dữ liệu*\ $C_("data")$], ..box-data, name: <bcd>)
+      node((2, 3.75), align(center)[*Khóa phiên mã hóa*\ $C_("key")$], ..box-data, name: <bck>)
+      node((2, 4.75), align(center)[*Giải mã RSA*\ Lấy lại $K$], ..box-proc, name: <rsa_d>)
+      node((3.15, 4.75), align(center)[*Private Key Bob*\ $(d_B, n)$], ..box-key, width: 29mm, name: <priv>)
+
+      node((1, 5.55), align(center)[*Session Key*\ $K$ khôi phục], ..box-key, name: <k_out>)
+      node((0, 6.35), align(center)[*Giải mã AES*\ Dùng khóa $K$], ..box-proc, name: <aes_d>)
+      node((0, 7.35), align(center)[*Bản rõ khôi phục*\ $M' = M$], ..box-data, name: <m_out>)
+
+      node(
+        enclose: (<bcd>, <priv>, <m_out>),
+        stroke: (paint: rgb("#64748b"), thickness: 0.7pt, dash: "dashed"),
+        fill: none,
+        inset: 10pt,
+        corner-radius: 5pt,
+        name: <bob_box>,
+      )
+      node((1, 3.22), text(size: 8.5pt, weight: "bold", fill: rgb("#475569"))[Phía Bob (Giải mã)], stroke: none, fill: white, inset: 2pt)
+
+      edge(<bcd>, <aes_d>, "-|>")
+      edge(<bck>, <rsa_d>, "-|>")
+      edge(<priv>, <rsa_d>, "--|>")
+      edge(<rsa_d>, (2, 5.55), <k_out>, "--|>")
+      edge(<k_out>, (1, 6.35), <aes_d>, "--|>")
+      edge(<aes_d>, <m_out>, "-|>")
+    },
   ),
   caption: [Sơ đồ nguyên lý mã hóa và giải mã lai RSA – AES khép kín trong mô hình PGP @zhou2011],
 )
@@ -138,120 +133,113 @@
   caption: [Sơ đồ tuần tự quy trình truyền thông mã hóa lai PGP giữa Alice và Bob],
 )
 
-// --- HÌNH 3: VÍ DỤ SỐ HỌC RSA (DÙNG DIAGRAPH AUTO-LAYOUT DỌC) ---
+// --- HÌNH 3: VÍ DỤ SỐ HỌC RSA (FLETCHER GRID) ---
 #let fig-rsa-numeric-example = figure(
-  raw-render(
-    ```dot
-    digraph {
-      rankdir=TB;
-      nodesep=0.45;
-      ranksep=0.38;
-      node [penwidth=0.8, margin="0.08,0.05"];
-      edge [penwidth=0.8, arrowsize=0.7, color="black"];
+  f-diagram(
+    spacing: (14mm, 7mm),
+    node-stroke: 0.7pt + luma(60),
+    node-corner-radius: 3pt,
+    edge-stroke: 0.75pt + black,
+    {
+      let box-proc = (fill: rgb("#f1f5f9"), width: 42mm, inset: 5pt)
+      let box-data = (fill: white, width: 34mm, inset: 5pt)
+      let box-key = (fill: white, stroke: (paint: luma(80), thickness: 0.7pt, dash: "dashed"), shape: fletcher.shapes.pill, width: 40mm, inset: 5pt)
 
-      // Input / Output dữ liệu: hình bình hành
-      m      [shape=parallelogram, style="filled", fillcolor="#ffffff"];
-      c      [shape=parallelogram, style="filled", fillcolor="#ffffff"];
-      c_bob  [shape=parallelogram, style="filled", fillcolor="#ffffff"];
-      m2     [shape=parallelogram, style="filled", fillcolor="#ffffff"];
+      // Alice
+      node((-0.7, 0), align(center)[*Bản rõ*\ $M = 125$], ..box-data, name: <m>)
+      node((0.7, 0), align(center)[*Khóa công khai*\ $(e = 17, n = 3233)$], ..box-key, name: <pub>)
+      node((0, 1.0), align(center)[*Mã hóa RSA*\ $C = M^e mod n$], ..box-proc, name: <enc>)
+      node((0, 2.0), align(center)[*Bản mã*\ $C = 1516$], ..box-data, name: <c>)
 
-      // Khóa bí mật và công khai: hình ellipse viền nét đứt
-      pub    [shape=ellipse, style="dashed,filled", fillcolor="#ffffff"];
-      priv   [shape=ellipse, style="dashed,filled", fillcolor="#ffffff"];
+      node(
+        enclose: (<m>, <pub>, <c>),
+        stroke: (paint: rgb("#64748b"), thickness: 0.7pt, dash: "dashed"),
+        fill: none,
+        inset: 10pt,
+        corner-radius: 5pt,
+      )
+      node((0, -0.55), text(size: 8.5pt, weight: "bold", fill: rgb("#475569"))[Alice (Bên gửi)], stroke: none, fill: white, inset: 2pt)
 
-      // Khối xử lý logic (Logic Processing): hình hộp góc bo tròn có màu nền
-      enc    [shape=box, style="rounded,filled", fillcolor="#f1f5f9"];
-      dec    [shape=box, style="rounded,filled", fillcolor="#f1f5f9"];
+      edge(<m>, (-0.7, 0.5), (-0.35, 0.5), <enc>, "-|>")
+      edge(<pub>, (0.7, 0.5), (0.35, 0.5), <enc>, "--|>")
+      edge(<enc>, <c>, "-|>")
 
-      subgraph cluster_alice {
-        label="Alice (Bên gửi)";
-        style="rounded,dashed";
-        color="#64748b";
-        fontsize=10;
-        { rank=same; m; pub; }
-        m -> enc        [style=solid];
-        pub -> enc      [style=dashed];
-        enc -> c        [style=solid];
-      }
+      // Network
+      edge(<c>, <c_bob>, "..|>", label: [Gửi qua mạng], label-side: right)
 
-      subgraph cluster_bob {
-        label="Bob (Bên nhận)";
-        style="rounded,dashed";
-        color="#64748b";
-        fontsize=10;
-        { rank=same; c_bob; priv; }
-        c_bob -> dec    [style=solid];
-        priv -> dec     [style=dashed];
-        dec -> m2       [style=solid];
-      }
+      // Bob
+      node((-0.7, 3.1), align(center)[*Bản mã nhận*\ $C = 1516$], ..box-data, name: <c_bob>)
+      node((0.7, 3.1), align(center)[*Khóa bí mật*\ $(d = 2753, n = 3233)$], ..box-key, name: <priv>)
+      node((0, 4.1), align(center)[*Giải mã RSA*\ $M' = C^d mod n$], ..box-proc, name: <dec>)
+      node((0, 5.1), align(center)[*Khôi phục*\ $M' = 125$], ..box-data, name: <m2>)
 
-      c -> c_bob        [style=dotted, label=" Gửi qua mạng"];
-    }
-    ```,
-    labels: (
-      "m": align(center)[*Bản rõ*\ $M = 125$],
-      "pub": align(center)[*Khóa công khai*\ $(e=17, n=3233)$],
-      "enc": align(center)[*Mã hóa RSA*\ $C = M^e mod n$],
-      "c": align(center)[*Bản mã*\ $C = 1516$],
-      "c_bob": align(center)[*Bản mã nhận*\ $C = 1516$],
-      "priv": align(center)[*Khóa bí mật*\ $(d=2753, n=3233)$],
-      "dec": align(center)[*Giải mã RSA*\ $M' = C^d mod n$],
-      "m2": align(center)[*Khôi phục*\ $M' = 125$],
-    ),
-    width: 55%,
+      node(
+        enclose: (<c_bob>, <priv>, <m2>),
+        stroke: (paint: rgb("#64748b"), thickness: 0.7pt, dash: "dashed"),
+        fill: none,
+        inset: 10pt,
+        corner-radius: 5pt,
+      )
+      node((0, 2.6), text(size: 8.5pt, weight: "bold", fill: rgb("#475569"))[Bob (Bên nhận)], stroke: none, fill: white, inset: 2pt)
+
+      edge(<c_bob>, (-0.7, 3.6), (-0.35, 3.6), <dec>, "-|>")
+      edge(<priv>, (0.7, 3.6), (0.35, 3.6), <dec>, "--|>")
+      edge(<dec>, <m2>, "-|>")
+    },
   ),
   caption: [Sơ đồ chu trình xử lý dữ liệu và khóa trong ví dụ số học RSA giữa Alice và Bob],
 )
 
-// --- HÌNH 3: CẤU TRÚC KHUNG GÓI TIN VÀ PHÂN TÍCH CÚ PHÁP TẠI BỘ GIẢI MÃ BOB (DÙNG DIAGRAPH) ---
+// --- HÌNH 4: CẤU TRÚC KHUNG GÓI TIN VÀ PHÂN TÍCH CÚ PHÁP TẠI BỘ GIẢI MÃ BOB (FLETCHER GRID) ---
 #let fig-packet-layout = figure(
-  raw-render(
-    ```dot
-    digraph {
-      rankdir=TB;
-      nodesep=0.16;
-      ranksep=0.35;
-      node [shape=box, style="rounded,filled", fillcolor="white", penwidth=0.8, margin="0.08,0.05"];
-      edge [penwidth=0.8, arrowsize=0.7, color="black"];
+  f-diagram(
+    spacing: (2.5mm, 12mm),
+    node-stroke: 0.7pt + luma(60),
+    node-corner-radius: 3pt,
+    edge-stroke: 0.75pt + black,
+    {
+      let box-field = (fill: white, width: 24.5mm, inset: 4pt)
+      let box-step = (fill: rgb("#f8fafc"), width: 24.5mm, inset: 4pt)
 
-      subgraph cluster_packet {
-        label="Khung gói tin TCP: [4B Big-Endian Length] + [JSON Envelope UTF-8]";
-        style="rounded,dashed";
-        color="#64748b";
-        fontsize=10;
-        { rank=same; f_len; f_key; f_nonce; f_data; f_tag; }
-        f_len -> f_key -> f_nonce -> f_data -> f_tag [style=invis];
-      }
+      // Top row: packet fields
+      node((0, 0), align(center)[#text(size: 7.5pt)[*4 Bytes (Big-Endian)*\ *Độ dài gói*\ #text(size: 6.5pt, fill: luma(80))[Tiền tố độ dài]]], ..box-field, name: <f_len>)
+      node((1, 0), align(center)[#text(size: 7.5pt)[*Khóa phiên mã hóa*\ $C_("key")$\ #text(size: 6.5pt, fill: luma(80))[Mã hóa RSA]]], ..box-field, name: <f_key>)
+      node((2, 0), align(center)[#text(size: 7.5pt)[*Vector khởi tạo*\ *Nonce / IV (12B)*\ #text(size: 6.5pt, fill: luma(80))[Dùng một lần]]], ..box-field, name: <f_nonce>)
+      node((3, 0), align(center)[#text(size: 7.5pt)[*Bản mã dữ liệu*\ $C_("data")$\ #text(size: 6.5pt, fill: luma(80))[Mã hóa AES-CTR]]], ..box-field, name: <f_data>)
+      node((4, 0), align(center)[#text(size: 7.5pt)[*Thẻ xác thực*\ *Auth Tag (16B)*\ #text(size: 6.5pt, fill: luma(80))[Hàm băm GHASH]]], ..box-field, name: <f_tag>)
 
-      subgraph cluster_bob {
-        label="Phân tích cú pháp tại bộ nhận của Bob";
-        style="rounded,dashed";
-        color="#64748b";
-        fontsize=10;
-        { rank=same; p_len; p_key; p_nonce; p_data; p_tag; }
-        p_len -> p_key -> p_nonce -> p_data -> p_tag [style=invis];
-      }
+      node(
+        enclose: (<f_len>, <f_tag>),
+        stroke: (paint: rgb("#64748b"), thickness: 0.7pt, dash: "dashed"),
+        fill: none,
+        inset: 12pt,
+        corner-radius: 5pt,
+      )
+      node((2, -0.45), box(width: 0pt, align(center, text(size: 8pt, weight: "bold", fill: rgb("#475569"))[#box(width: 110mm)[Khung gói tin TCP: \[4B Big-Endian Length\] + \[JSON Envelope UTF-8\]]])), stroke: none, fill: none, inset: 0pt)
 
-      f_len -> p_len;
-      f_key -> p_key;
-      f_nonce -> p_nonce;
-      f_data -> p_data;
-      f_tag -> p_tag;
-    }
-    ```,
-    labels: (
-      "f_len": align(center)[*4 Bytes (Big-Endian)*\ *Độ dài gói*\ #text(size: 7.5pt)[Tiền tố độ dài]],
-      "f_key": align(center)[*Khóa phiên mã hóa*\ $C_("key")$\ #text(size: 7.5pt)[Mã hóa RSA]],
-      "f_nonce": align(center)[*Vector khởi tạo*\ *Nonce / IV (12B)*\ #text(size: 7.5pt)[Dùng một lần]],
-      "f_data": align(center)[*Bản mã dữ liệu*\ $C_("data")$\ #text(size: 7.5pt)[Mã hóa AES-CTR]],
-      "f_tag": align(center)[*Thẻ xác thực*\ *Auth Tag (16B)*\ #text(size: 7.5pt)[Hàm băm GHASH]],
-      "p_len": align(center)[*1. Đọc khung*\ Đọc đủ độ dài\ #text(size: 7.5pt)[Tách gói JSON]],
-      "p_key": align(center)[*2. Giải mã RSA*\ Khôi phục khóa $K'$\ #text(size: 7.5pt)[Dùng khóa bí mật]],
-      "p_nonce": align(center)[*3. Khởi tạo bộ đếm*\ Nạp Nonce / IV\ #text(size: 7.5pt)[Tạo $J_0$ và $"CB"_i$]],
-      "p_data": align(center)[*4. Giải mã AES*\ Giải mã dòng CTR\ #text(size: 7.5pt)[Khôi phục $M'$]],
-      "p_tag": align(center)[*5. Kiểm tra Tag*\ Đối chiếu GHASH\ #text(size: 7.5pt)[Chống sửa đổi]],
-    ),
-    width: 98%,
+      // Bottom row: Bob parsing steps
+      node((0, 1), align(center)[#text(size: 7.5pt)[*1. Đọc khung*\ Đọc đủ độ dài\ #text(size: 6.5pt, fill: luma(80))[Tách gói JSON]]], ..box-step, name: <p_len>)
+      node((1, 1), align(center)[#text(size: 7.5pt)[*2. Giải mã RSA*\ Khôi phục khóa $K'$\ #text(size: 6.5pt, fill: luma(80))[Dùng khóa bí mật]]], ..box-step, name: <p_key>)
+      node((2, 1), align(center)[#text(size: 7.5pt)[*3. Khởi tạo bộ đếm*\ Nạp Nonce / IV\ #text(size: 6.5pt, fill: luma(80))[Tạo $J_0$ và $"CB"_i$]]], ..box-step, name: <p_nonce>)
+      node((3, 1), align(center)[#text(size: 7.5pt)[*4. Giải mã AES*\ Giải mã dòng CTR\ #text(size: 6.5pt, fill: luma(80))[Khôi phục $M'$]]], ..box-step, name: <p_data>)
+      node((4, 1), align(center)[#text(size: 7.5pt)[*5. Kiểm tra Tag*\ Đối chiếu GHASH\ #text(size: 6.5pt, fill: luma(80))[Chống sửa đổi]]], ..box-step, name: <p_tag>)
+
+      node(
+        enclose: (<p_len>, <p_tag>),
+        stroke: (paint: rgb("#64748b"), thickness: 0.7pt, dash: "dashed"),
+        fill: none,
+        inset: 12pt,
+        corner-radius: 5pt,
+      )
+      node((2, 1.45), box(width: 0pt, align(center, text(size: 8pt, weight: "bold", fill: rgb("#475569"))[#box(width: 110mm)[Phân tích cú pháp và xử lý tuần tự tại bộ nhận của Bob]])), stroke: none, fill: none, inset: 0pt)
+
+      // Clean straight vertical arrows
+      edge(<f_len>, <p_len>, "-|>")
+      edge(<f_key>, <p_key>, "-|>")
+      edge(<f_nonce>, <p_nonce>, "-|>")
+      edge(<f_data>, <p_data>, "-|>")
+      edge(<f_tag>, <p_tag>, "-|>")
+    },
   ),
   caption: [Sơ đồ cấu trúc khung gói tin (Packet Framing) và luồng phân tích cú pháp tại bộ nhận của Bob],
 )
@@ -305,76 +293,90 @@
   caption: [Sơ đồ tuần tự mô phỏng mã hóa lai qua Socket TCP giữa máy Alice và máy Bob],
 )
 
-// --- LƯU ĐỒ THUẬT TOÁN AES-128 (SPN) ---
+// --- LƯU ĐỒ THUẬT TOÁN AES-128 (SPN - FLETCHER ORTHOGONAL) ---
 #let fig-aes-spn-flow = figure(
-  raw-render(
-    ```dot
-    digraph {
-      rankdir=TB;
-      nodesep=0.25;
-      ranksep=0.3;
-      node [shape=box, style="rounded,filled", fillcolor="white", penwidth=0.8, margin="0.1,0.06"];
-      edge [penwidth=0.8, arrowsize=0.7, color="black"];
+  f-diagram(
+    spacing: (10mm, 5mm),
+    node-stroke: 0.7pt + luma(60),
+    node-corner-radius: 3pt,
+    edge-stroke: 0.75pt + black,
+    {
+      let box-main = (fill: white, width: 84mm, inset: 4.5pt)
+      let box-proc = (fill: rgb("#f1f5f9"), width: 84mm, inset: 4.5pt)
+      let box-cond = (fill: rgb("#fffbeb"), shape: fletcher.shapes.diamond, width: 60mm, inset: 4pt)
 
-      in_blk -> init_key -> r_sub -> r_shift -> r_mix -> r_add -> cond;
-      cond -> r_sub [label=" Vòng 1..9"];
-      cond -> f_sub [label=" Vòng 10 (cuối)"];
-      f_sub -> f_shift -> f_add -> out_blk;
-    }
-    ```,
-    labels: (
-      "in_blk": align(center)[*Khối bản rõ 128-bit* (Ma trận trạng thái $4 times 4$ byte)],
-      "init_key": align(center)[*Khởi tạo vòng 0:* Cộng khóa vòng (`AddRoundKey`)],
-      "r_sub": align(center)[*Thế phi tuyến (`SubBytes`):* Tra bảng S-box 8-bit],
-      "r_shift": align(center)[*Dịch hàng (`ShiftRows`):* Dịch vòng 4 hàng của ma trận],
-      "r_mix": align(center)[*Trộn cột (`MixColumns`):* Nhân ma trận trên $"GF"(2^8)$],
-      "r_add": align(center)[*Cộng khóa vòng (`AddRoundKey`):* Phép XOR với khóa vòng $K_r$],
-      "cond": align(center)[*Kiểm tra số vòng* ($r < 10$?)],
-      "f_sub": align(center)[*Vòng cuối (`SubBytes`)*],
-      "f_shift": align(center)[*Vòng cuối (`ShiftRows`)* (Bỏ qua `MixColumns`)],
-      "f_add": align(center)[*Vòng cuối (`AddRoundKey`)* với khóa $K_(10)$],
-      "out_blk": align(center)[*Khối bản mã 128-bit*],
-    ),
-    width: 68%,
+      node((0, 0), [*Khối bản rõ 128-bit* (Ma trận trạng thái $4 times 4$ byte)], ..box-main, name: <in_blk>)
+      node((0, 1), [*Khởi tạo vòng 0:* Cộng khóa vòng (`AddRoundKey`)], ..box-proc, name: <init_key>)
+      node((0, 2), [*Thế phi tuyến (`SubBytes`):* Tra bảng S-box 8-bit], ..box-proc, name: <r_sub>)
+      node((0, 3), [*Dịch hàng (`ShiftRows`):* Dịch vòng 4 hàng của ma trận], ..box-proc, name: <r_shift>)
+      node((0, 4), [*Trộn cột (`MixColumns`):* Nhân ma trận trên $"GF"(2^8)$], ..box-proc, name: <r_mix>)
+      node((0, 5), [*Cộng khóa vòng (`AddRoundKey`):* XOR với khóa vòng $K_r$], ..box-proc, name: <r_add>)
+      node((0, 6), [*Kiểm tra số vòng* ($r < 10$?)], ..box-cond, name: <cond>)
+      node((0, 7.2), [*Vòng cuối (`SubBytes`)*], ..box-proc, name: <f_sub>)
+      node((0, 8.2), [*Vòng cuối (`ShiftRows`)* (Bỏ qua `MixColumns`)], ..box-proc, name: <f_shift>)
+      node((0, 9.2), [*Vòng cuối (`AddRoundKey`)* với khóa $K_(10)$], ..box-proc, name: <f_add>)
+      node((0, 10.2), [*Khối bản mã 128-bit*], ..box-main, name: <out_blk>)
+
+      edge(<in_blk>, <init_key>, "-|>")
+      edge(<init_key>, <r_sub>, "-|>")
+      edge(<r_sub>, <r_shift>, "-|>")
+      edge(<r_shift>, <r_mix>, "-|>")
+      edge(<r_mix>, <r_add>, "-|>")
+      edge(<r_add>, <cond>, "-|>")
+      edge(<cond>, <f_sub>, "-|>", label: [Vòng 10 (cuối)], label-side: left)
+      edge(<cond.east>, (1.2, 6), (1.2, 2), <r_sub.east>, "-|>", label: [Vòng 1..9], label-pos: 0.45, label-side: right)
+      edge(<f_sub>, <f_shift>, "-|>")
+      edge(<f_shift>, <f_add>, "-|>")
+      edge(<f_add>, <out_blk>, "-|>")
+    },
   ),
   caption: [Lưu đồ thuật toán mã hóa khối AES-128 theo cấu trúc mạng thay thế – hoán vị (SPN)],
 )
 
-// --- LƯU ĐỒ CHẾ ĐỘ XÁC THỰC AES-GCM ---
+// --- LƯU ĐỒ CHẾ ĐỘ XÁC THỰC AES-GCM (FLETCHER ORTHOGONAL GRID) ---
 #let fig-aes-gcm-flow = figure(
-  raw-render(
-    ```dot
-    digraph {
-      rankdir=TB;
-      nodesep=0.25;
-      ranksep=0.32;
-      node [shape=box, style="rounded,filled", fillcolor="white", penwidth=0.8, margin="0.1,0.06"];
-      edge [penwidth=0.8, arrowsize=0.7, color="black"];
+  f-diagram(
+    spacing: (7mm, 6mm),
+    node-stroke: 0.7pt + luma(60),
+    node-corner-radius: 3pt,
+    edge-stroke: 0.75pt + black,
+    {
+      let box-main = (fill: white, width: 58mm, inset: 4.5pt)
+      let box-proc = (fill: rgb("#f1f5f9"), width: 58mm, inset: 4.5pt)
+      let box-side = (fill: white, width: 32mm, inset: 4.5pt)
 
-      { rank=same; cb_init; h_gen; }
-      cb_init -> cb_inc -> aes_ctr -> xor_p -> c_out;
-      p_in -> xor_p;
-      c_out -> ghash_mul;
-      h_gen -> ghash_mul;
-      ghash_mul -> len_blk -> tag_xor -> tag_out;
-      cb_init -> aes_j0 -> tag_xor;
-    }
-    ```,
-    labels: (
-      "cb_init": align(center)[*Khối đếm đầu* $J_0 = "Nonce" || 1$],
-      "h_gen": align(center)[*Khóa băm* $H = "AES"_K (0^(128))$],
-      "cb_inc": align(center)[*Tăng bộ đếm* $"CB"_i = "inc"_(32)("CB"_(i-1))$],
-      "aes_ctr": align(center)[*Mã hóa khối* $"AES"_K ("CB"_i)$],
-      "p_in": align(center)[*Khối bản rõ* $P_i$],
-      "xor_p": align(center)[*Phép XOR:* $C_i = P_i xor "AES"_K ("CB"_i)$],
-      "c_out": align(center)[*Khối bản mã* $C_i$],
-      "ghash_mul": align(center)[*Hàm băm GHASH:* $X_i = (X_(i-1) xor C_i) dot H$ trên $"GF"(2^(128))$],
-      "len_blk": align(center)[*Nhân khối độ dài:* $(X_m xor ("len"_(64)(A) || "len"_(64)(C))) dot H$],
-      "aes_j0": align(center)[*Mã hóa* $"AES"_K (J_0)$],
-      "tag_xor": align(center)[*XOR tạo thẻ:* $"GHASH" xor "AES"_K (J_0)$],
-      "tag_out": align(center)[*Thẻ xác thực (Tag 128-bit)*],
-    ),
-    width: 92%,
+      // Left column (J0 branch)
+      node((-1, 0), align(center)[*Khối đếm đầu*\ $J_0 = "Nonce" || 1$], ..box-side, name: <cb_init>)
+      node((-1, 2), align(center)[*Mã hóa*\ $"AES"_K (J_0)$], ..box-side, fill: rgb("#f1f5f9"), name: <aes_j0>)
+
+      // Center column (CTR + GHASH spine)
+      node((0, 1), align(center)[*Tăng bộ đếm*\ $"CB"_i = "inc"_(32)("CB"_(i-1))$], ..box-proc, name: <cb_inc>)
+      node((0, 2), align(center)[*Mã hóa khối*\ $"AES"_K ("CB"_i)$], ..box-proc, name: <aes_ctr>)
+      node((0, 3), align(center)[*Phép XOR:*\ $C_i = P_i xor "AES"_K ("CB"_i)$], ..box-proc, name: <xor_p>)
+      node((0, 4), align(center)[*Khối bản mã* $C_i$], ..box-main, name: <c_out>)
+      node((0, 5), align(center)[*Hàm băm GHASH:*\ $X_i = (X_(i-1) xor C_i) dot H$], ..box-proc, name: <ghash_mul>)
+      node((0, 6), align(center)[*Nhân khối độ dài:*\ $(X_m xor ("len"_(64)(A) || "len"_(64)(C))) dot H$], ..box-proc, name: <len_blk>)
+      node((0, 7), align(center)[*XOR tạo thẻ:*\ $"GHASH" xor "AES"_K (J_0)$], ..box-proc, name: <tag_xor>)
+      node((0, 8), align(center)[*Thẻ xác thực (Tag 128-bit)*], ..box-main, name: <tag_out>)
+
+      // Right column (inputs P_i and H)
+      node((1, 3), align(center)[*Khối bản rõ* $P_i$], ..box-side, name: <p_in>)
+      node((1, 5), align(center)[*Khóa băm*\ $H = "AES"_K (0^(128))$], ..box-side, name: <h_gen>)
+
+      // Edges (strictly orthogonal)
+      edge(<cb_init>, <aes_j0>, "-|>")
+      edge(<cb_init>, (0, 0), <cb_inc>, "-|>")
+      edge(<cb_inc>, <aes_ctr>, "-|>")
+      edge(<aes_ctr>, <xor_p>, "-|>")
+      edge(<p_in>, <xor_p>, "-|>")
+      edge(<xor_p>, <c_out>, "-|>")
+      edge(<c_out>, <ghash_mul>, "-|>")
+      edge(<h_gen>, <ghash_mul>, "-|>")
+      edge(<ghash_mul>, <len_blk>, "-|>")
+      edge(<len_blk>, <tag_xor>, "-|>")
+      edge(<aes_j0>, (-1, 7), <tag_xor>, "-|>")
+      edge(<tag_xor>, <tag_out>, "-|>")
+    },
   ),
   caption: [Lưu đồ nguyên lý mã hóa dòng CTR và xác thực toàn vẹn GHASH trong chế độ AES-GCM],
 )
