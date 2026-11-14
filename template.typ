@@ -186,8 +186,7 @@
 
   pagebreak()
 
-  // Định dạng trích dẫn theo dạng chỉ số trên (superscript) thanh thoát
-  show cite: it => text(fill: heading-color, weight: "bold")[#super(it)]
+  // Trích dẫn chuẩn IEEE đặt ngang hàng với văn bản ([1], [2])
 
   // Định dạng bảng toàn cục: Tiêu đề canh giữa, nội dung canh lề trái
   show table.cell: it => {
