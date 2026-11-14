@@ -77,12 +77,14 @@ def generate_rsa_keys(p=None, q=None, e=65537, bits=256):
 
 def rsa_encrypt(public_key, plaintext_num):
     e, n = public_key
-    if plaintext_num >= n:
-        raise ValueError(f"Dữ liệu ({plaintext_num}) phải nhỏ hơn modulus n ({n})")
+    if not (0 <= plaintext_num < n):
+        raise ValueError(f"Dữ liệu ({plaintext_num}) phải nằm trong khoảng [0, {n - 1}]")
     return pow(plaintext_num, e, n)
 
 def rsa_decrypt(private_key, ciphertext_num):
     d, n = private_key
+    if not (0 <= ciphertext_num < n):
+        raise ValueError(f"Bản mã ({ciphertext_num}) phải nằm trong khoảng [0, {n - 1}]")
     return pow(ciphertext_num, d, n)
 ```
 
@@ -123,8 +125,8 @@ def bob_decrypt_package(package, bob_priv_key):
     recovered_key_int = rsa_decrypt(bob_priv_key, package["enc_session_key"])
     try:
         recovered_session_key = recovered_key_int.to_bytes(16, byteorder="big")
-    except OverflowError:
-        recovered_session_key = (recovered_key_int & ((1 << 128) - 1)).to_bytes(16, byteorder="big")
+    except OverflowError as exc:
+        raise ValueError("Khóa phiên giải mã từ RSA vượt quá 128-bit (sai khóa hoặc C_key bị can thiệp).") from exc
     plaintext_bytes = aes_gcm_decrypt(
         session_key=recovered_session_key,
         nonce_bytes=package["nonce"],

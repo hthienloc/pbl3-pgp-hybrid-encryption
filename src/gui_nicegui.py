@@ -23,33 +23,34 @@ from algorithms.rsa import generate_rsa_keys, rsa_encrypt, rsa_decrypt
 from algorithms.aes_gcm import aes_gcm_encrypt, aes_gcm_decrypt
 
 # -----------------------------------------------------------------------------
-# TRẠNG THÁI PHIÊN LÀM VIỆC DÙNG CHUNG
+# TRẠNG THÁI PHIÊN LÀM VIỆC CỤC BỘ CHO MỖI TAB
 # -----------------------------------------------------------------------------
-state = {
-    "bob_pub": None,
-    "bob_priv": None,
-    "session_key": None,
-    "nonce": None,
-    "ciphertext": None,
-    "auth_tag": None,
-    "enc_session_key": None,
-    "recovered_key": None,
-    "is_busy": False,
-    "log_history": [
-        "Hệ thống khởi tạo thành công. Nhấn vào các nút thao tác phía trên để quan sát tiến trình tính toán..."
-    ],
-    "step_status": {
-        "m": "ready",
-        "k": "waiting",
-        "aes_enc": "waiting",
-        "rsa_enc": "waiting",
-        "network": "waiting",
-        "rsa_dec": "waiting",
-        "ghash": "waiting",
-        "aes_dec": "waiting",
-        "m_out": "waiting",
-    },
-}
+def create_initial_state():
+    return {
+        "bob_pub": None,
+        "bob_priv": None,
+        "session_key": None,
+        "nonce": None,
+        "ciphertext": None,
+        "auth_tag": None,
+        "enc_session_key": None,
+        "recovered_key": None,
+        "is_tampered": False,
+        "is_busy": False,
+        "log_history": [
+            "Hệ thống khởi tạo thành công. Nhấn vào các nút thao tác phía trên để quan sát tiến trình tính toán..."
+        ],
+        "step_status": {
+            "m": "ready",
+            "k": "waiting",
+            "aes_enc": "waiting",
+            "rsa_enc": "waiting",
+            "network": "waiting",
+            "rsa_dec": "waiting",
+            "aes_dec": "waiting",
+            "m_out": "waiting",
+        },
+    }
 
 
 def notify(msg: str, color="indigo"):
@@ -160,6 +161,7 @@ def page_integrated():
     setup_page_head()
     ui.query("body").style("padding-bottom: 22rem;")
     render_header("integrated")
+    state = create_initial_state()
 
     def log_math(message: str):
         lines = message.strip().split("\n")
@@ -209,53 +211,6 @@ def page_integrated():
             progress_bar.set_visibility(False)
             lbl_exec_status.set_text("Hệ thống sẵn sàng cho bước tiếp theo.")
 
-    async def action_generate_keys():
-        if state["is_busy"]:
-            return
-        set_busy(True, "Sinh cặp khóa RSA Bob (Miller-Rabin & Euclid mở rộng)")
-        state["step_status"] = {
-            "m": "ready",
-            "k": "waiting",
-            "aes_enc": "waiting",
-            "rsa_enc": "waiting",
-            "network": "waiting",
-            "rsa_dec": "waiting",
-            "ghash": "waiting",
-            "aes_dec": "waiting",
-            "m_out": "waiting",
-        }
-        update_diagram()
-        log_math("[RSA KeyGen] 1. Sinh số nguyên tố p, q (128 bits) qua Miller-Rabin test...")
-        await asyncio.sleep(0.3)
-        state["bob_pub"], state["bob_priv"] = generate_rsa_keys(bits=256)
-        e, n = state["bob_pub"]
-        d, _ = state["bob_priv"]
-        log_math(
-            f"[RSA KeyGen] 2. Tính modulus n = p * q = {n}\n"
-            f"[RSA KeyGen] 3. Chọn số mũ Fermat e = {e}\n"
-            f"[RSA KeyGen] 4. Euclid mở rộng -> d = {d}\n"
-            f"[Hoàn tất] Public Key Bob: (e={e}, n) | Private Key Bob: d"
-        )
-        lbl_bob_pub.set_text(f"e={e}, n={n}")
-        lbl_bob_priv.set_text(f"d={d}")
-        lbl_alice_bob_pub.set_text(f"e={e}, n={n}")
-        state["session_key"] = None
-        state["nonce"] = None
-        state["ciphertext"] = None
-        state["auth_tag"] = None
-        state["enc_session_key"] = None
-        state["recovered_key"] = None
-        lbl_session_key.set_text("—")
-        lbl_aes_cipher.set_text("—")
-        lbl_rsa_cipher.set_text("—")
-        txt_network_packet.set_value("")
-        lbl_recovered_key.set_text("—")
-        lbl_ghash_status.set_text("Chờ xác thực")
-        lbl_ghash_status.classes(replace="text-xs text-slate-400 font-mono")
-        txt_decrypted_output.set_value("")
-        set_busy(False)
-        notify("Đã sinh cặp khóa RSA Bob (256-bit)", "teal")
-
     async def action_generate_session_key():
         if state["is_busy"]:
             return
@@ -297,8 +252,9 @@ def page_integrated():
         log_math(f"[AES-GCM] Khởi tạo: Bản rõ |M| = {len(pt_bytes)} bytes. Sinh Nonce 12B...")
         await asyncio.sleep(0.15)
         state["ciphertext"], state["nonce"], state["auth_tag"] = aes_gcm_encrypt(state["session_key"], pt_bytes)
+        state["is_tampered"] = False
         log_math(
-            f"[AES-CTR] Ghép Counter Block CB_0 = Nonce(12B) || 00000001(4B)\n"
+            f"[AES-CTR] Ghép Counter Block CB_1 = Nonce(12B) || 00000002(4B) (sau J_0 = CB_0)\n"
             f"[AES-CTR] Mã hóa dòng: C_i = P_i ⊕ AES_K(CB_i) -> C_data ({len(state['ciphertext'])}B)"
         )
         await asyncio.sleep(0.2)
@@ -378,12 +334,16 @@ def page_integrated():
     async def action_simulate_tamper():
         if state["is_busy"]:
             return
-        if not state["ciphertext"]:
-            notify("Chưa có gói tin", "amber")
+        if not state["ciphertext"] or not state["enc_session_key"]:
+            notify("Vui lòng chạy đủ bước AES-GCM và RSA trước", "amber")
+            return
+        if state["is_tampered"]:
+            notify("Gói tin đã bị sửa bit trước đó rồi", "amber")
             return
         tampered = bytearray(state["ciphertext"])
         tampered[0] ^= 0xFF
         state["ciphertext"] = bytes(tampered)
+        state["is_tampered"] = True
         packet_str = (
             "// [ĐÃ SỬA ĐỔI 1 BYTE TRONG C_DATA: BIT-FLIP ATTACK]\n"
             "{\n"
@@ -415,8 +375,15 @@ def page_integrated():
             f"[RSA Dec] Lũy thừa mô-đun: K' = (C_key)^d mod n..."
         )
         await asyncio.sleep(0.3)
-        recovered_int = rsa_decrypt(state["bob_priv"], state["enc_session_key"])
-        state["recovered_key"] = (recovered_int & ((1 << 128) - 1)).to_bytes(16, byteorder="big")
+        try:
+            recovered_int = rsa_decrypt(state["bob_priv"], state["enc_session_key"])
+            state["recovered_key"] = recovered_int.to_bytes(16, byteorder="big")
+        except (ValueError, OverflowError) as err:
+            state["step_status"]["rsa_dec"] = "error"
+            update_diagram()
+            set_busy(False)
+            notify(f"Lỗi giải mã RSA: {err}", "red")
+            return
         log_math(
             f"[Định lý Euler] (C_key)^d = K^(1 + k*phi(n)) ≡ K mod n\n"
             f"[RSA Dec Hoàn tất] Khôi phục Session Key K': {state['recovered_key'].hex()}"
@@ -626,13 +593,13 @@ def page_algorithms():
     alg_data = {
         "pub": None,
         "priv": None,
+        "plaintext": None,
         "k_bytes": None,
         "iv": None,
         "c_data": None,
         "tag": None,
         "c_key": None,
         "recovered_k": None,
-        "recovered_m": None,
     }
 
     # -------------------------------------------------------------------------
@@ -673,6 +640,7 @@ def page_algorithms():
 
         # Tự động sinh khóa phiên K 128-bit ngẫu nhiên từ CSPRNG
         k_bytes = os.urandom(16)
+        alg_data["plaintext"] = msg
         alg_data["k_bytes"] = k_bytes
         m_bytes = msg.encode("utf-8")
 
@@ -758,7 +726,7 @@ def page_algorithms():
 
         # Lũy thừa mô-đun: K' = (C_key)^d mod n
         k_rec_int = rsa_decrypt(alg_data["priv"], c_key)
-        k_rec_bytes = (k_rec_int & ((1 << 128) - 1)).to_bytes(16, "big")
+        k_rec_bytes = k_rec_int.to_bytes(16, "big")
         alg_data["recovered_k"] = k_rec_bytes
 
         is_matched = (k_rec_bytes == alg_data["k_bytes"])
@@ -806,7 +774,6 @@ def page_algorithms():
                 auth_tag_bytes=alg_data["tag"],
             )
             msg_recovered = pt_bytes.decode("utf-8")
-            alg_data["recovered_m"] = msg_recovered
 
             txt_aes_dec_process.set_text(
                 f"1. Nạp khóa phiên K' (128-bit) vừa khôi phục ở Khối 4\n"
@@ -821,7 +788,7 @@ def page_algorithms():
                 f"• Bản rõ thông điệp khôi phục M':\n"
                 f"  \"{msg_recovered}\"\n\n"
                 f"• Thông điệp gốc ban đầu M:\n"
-                f"  \"{inp_aes_msg.value.strip()}\"\n\n"
+                f"  \"{alg_data['plaintext']}\"\n\n"
                 f"• Kết quả khép kín luồng:\n"
                 f"  ✓ KHÔI PHỤC HOÀN TOÀN CHÍNH XÁC (M' == M)"
             )
@@ -864,6 +831,8 @@ def page_algorithms():
         notify("Đã hoàn tất tuần tự toàn bộ 5 khối thuật toán!", "emerald")
 
     def reset_blocks():
+        for key in ("plaintext", "k_bytes", "iv", "c_data", "tag", "c_key", "recovered_k"):
+            alg_data[key] = None
         execute_rsa_keygen(silent=True)
         lbl_k2_key_hex.set_text("—")
         txt_aes_process.set_text("Nhấn 'Mã Hóa AES-GCM' để bắt đầu...")
@@ -926,7 +895,7 @@ def page_algorithms():
             with ui.grid(columns=3).classes("w-full gap-3 items-stretch"):
                 with ui.card().classes("p-3 bg-slate-50 rounded-lg border border-slate-200"):
                     ui.label("INPUT (THAM SỐ)").classes("text-[11px] font-bold text-slate-600 uppercase border-b pb-1")
-                    ui.label("• Modulus n: 256 bits\n• Số nguyên tố p, q: 128 bits\n• Fermat: e = 65537\n• Miller-Rabin: k = 40 vòng").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap leading-relaxed mt-2")
+                    ui.label("• Modulus n: 256 bits\n• Số nguyên tố p, q: 128 bits\n• Fermat: e = 65537\n• Miller-Rabin: k = 20 vòng").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap leading-relaxed mt-2")
                 with ui.card().classes("p-3 bg-teal-50/50 rounded-lg border border-teal-200"):
                     ui.label("QUÁ TRÌNH XỬ LÝ SỐ HỌC").classes("text-[11px] font-bold text-teal-800 uppercase border-b border-teal-200 pb-1")
                     txt_rsa_keygen_process = ui.label("Nhấn 'Tạo Cặp Khóa' để tính toán...").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap leading-relaxed mt-2")

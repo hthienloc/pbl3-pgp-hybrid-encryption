@@ -44,9 +44,8 @@ def bob_decrypt_package(package, bob_priv_key):
     # Khôi phục trực tiếp 16 bytes Session Key từ kết quả giải mã RSA
     try:
         recovered_session_key = recovered_key_int.to_bytes(16, byteorder="big")
-    except OverflowError:
-        # Nếu C_key bị thay đổi hoặc giải mã bằng sai Private Key làm số nguyên > 16 bytes
-        recovered_session_key = (recovered_key_int & ((1 << 128) - 1)).to_bytes(16, byteorder="big")
+    except OverflowError as exc:
+        raise ValueError("Khóa phiên giải mã từ RSA vượt quá 128-bit (sai khóa hoặc C_key bị can thiệp).") from exc
 
     plaintext_bytes = aes_gcm_decrypt(
         session_key=recovered_session_key,

@@ -115,6 +115,12 @@ def main():
                         print(f'[BOB] >>> BẢN RÕ NHẬN ĐƯỢC: "{plaintext}"', flush=True)
                         send_json(connection, {"status": "OK", "detail": "Bob da giai ma va xac thuc thanh cong!"})
 
+                    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+                        print(f"[BOB] Lỗi định dạng gói tin JSON/UTF-8: {error}", flush=True)
+                        try:
+                            send_json(connection, {"status": "ERROR", "detail": f"Goi tin JSON khong hop le: {error}"})
+                        except OSError:
+                            pass
                     except ValueError as error:
                         print("[BOB] [!] CẢNH BÁO AN TOÀN MẬT MÃ:")
                         print(f"      Phát hiện gói tin bị can thiệp hoặc sai khóa! Chi tiết: {error}")
@@ -125,6 +131,10 @@ def main():
                             pass
                     except Exception as error:
                         print("[BOB] Lỗi nhận/giải mã:", error, flush=True)
+                        try:
+                            send_json(connection, {"status": "ERROR", "detail": f"Loi xu ly phia server: {error}"})
+                        except OSError:
+                            pass
         except KeyboardInterrupt:
             print("\n[BOB] Đã dừng TCP Server.", flush=True)
 

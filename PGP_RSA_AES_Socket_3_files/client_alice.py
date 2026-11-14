@@ -21,6 +21,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 PORT = 5000
+MAX_PACKET = 4 * 1024 * 1024
 BASE_DIR = Path(__file__).resolve().parent
 PUBLIC_KEY_FILE = BASE_DIR / "bob_public.json"
 
@@ -45,8 +46,13 @@ def send_json(connection, payload_dict):
 
 def receive_json(connection):
     packet_length = struct.unpack("!I", recv_exact(connection, 4))[0]
+    if not 0 < packet_length <= MAX_PACKET:
+        raise ValueError("Kích thước gói tin phản hồi không hợp lệ.")
     packet = recv_exact(connection, packet_length)
-    return json.loads(packet.decode("utf-8"))
+    envelope = json.loads(packet.decode("utf-8"))
+    if not isinstance(envelope, dict):
+        raise ValueError("Gói tin phản hồi phải là một JSON object.")
+    return envelope
 
 
 def ensure_bob_public_key(bob_ip):

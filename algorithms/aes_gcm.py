@@ -21,8 +21,10 @@ def aes_gcm_encrypt(session_key, plaintext_bytes):
 def aes_gcm_decrypt(session_key, nonce_bytes, ciphertext_bytes, auth_tag_bytes):
     """
     Giải mã và kiểm thực toàn vẹn dữ liệu bằng AES-GCM.
-    Ném lỗi ValueError nếu Authentication Tag không khớp.
+    Ném lỗi ValueError nếu Nonce không hợp lệ hoặc Authentication Tag không khớp.
     """
+    if len(nonce_bytes) != 12:
+        raise ValueError(f"Nonce AES-GCM chuẩn phải dài 12 bytes (nhận được {len(nonce_bytes)} bytes).")
     cipher = AES.new(session_key, AES.MODE_GCM, nonce=nonce_bytes)
     plaintext = cipher.decrypt_and_verify(ciphertext_bytes, auth_tag_bytes)
     return plaintext
