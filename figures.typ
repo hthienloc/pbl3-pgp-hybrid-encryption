@@ -97,7 +97,7 @@
     ),
     width: 72%,
   ),
-  caption: [Sơ đồ nguyên lý mã hóa và giải mã lai RSA – AES khép kín trong mô hình PGP],
+  caption: [Sơ đồ nguyên lý mã hóa và giải mã lai RSA – AES khép kín trong mô hình PGP @zhou2011],
 )
 
 // --- HÌNH 2: SƠ ĐỒ TUẦN TỰ TƯƠNG TÁC ALICE - BOB (DÙNG CHRONOS HỖ TRỢ MATH) ---
