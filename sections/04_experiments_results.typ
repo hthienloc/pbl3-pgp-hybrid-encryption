@@ -4,17 +4,17 @@
 = Thực nghiệm và kết quả
 
 == Môi trường thực nghiệm và kiến trúc mã nguồn
-Hệ thống phần mềm được tổ chức phân tầng rõ ràng với lõi thuật toán mật mã đặt tại thư mục `algorithms/` và được dùng chung bởi giao diện mô phỏng trực quan NiceGUI, bên cạnh các kịch bản kiểm thử CLI và Socket TCP:
-- `algorithms/euclid.py`: Cài đặt thuật toán Euclid mở rộng (`extended_gcd`) và hàm tìm phần tử nghịch đảo mô-đun (`mod_inverse`).
-- `algorithms/rsa.py`: Cài đặt hàm kiểm tra số nguyên tố Miller–Rabin (`is_prime` với $k = 20$), sinh số nguyên tố ngẫu nhiên (`generate_prime`), sinh cặp khóa RSA (`generate_rsa_keys`), mã hóa (`rsa_encrypt`) và giải mã (`rsa_decrypt`).
-- `algorithms/aes_gcm.py`: Cài đặt hàm mã hóa `aes_gcm_encrypt` và giải mã có kiểm thực `aes_gcm_decrypt` dựa trên thư viện PyCryptodome.
-- `algorithms/hybrid_pgp.py`: Đóng gói và giải mã trọn gói luồng dữ liệu lai PGP giữa Alice và Bob (`alice_encrypt_package`, `bob_decrypt_package`).
-- `PGP_RSA_AES_Socket_3_files/`: Chứa `pgp_crypto.py`, `server_bob.py` (TCP Server, khóa RSA 512-bit) và `client_alice.py` (TCP Client) phục vụ truyền thông qua mạng LAN.
-- `src/hybrid_demo.py`: Kịch bản dòng lệnh (CLI) độc lập chạy 3 kịch bản kiểm thử bảo mật (kết hợp `src/rsa.py`).
-- `src/gui_nicegui.py`: Ứng dụng web mô phỏng tương tác thời gian thực hai chế độ.
+Hệ thống tổ chức lõi thuật toán tại `algorithms/` dùng chung cho giao diện NiceGUI, bên cạnh các kịch bản CLI và Socket TCP:
+- `algorithms/euclid.py`: Thuật toán Euclid mở rộng (`extended_gcd`) và nghịch đảo mô-đun (`mod_inverse`).
+- `algorithms/rsa.py`: Kiểm tra nguyên tố Miller–Rabin (`is_prime`, $k = 20$), sinh số nguyên tố (`generate_prime`), sinh khóa (`generate_rsa_keys`), mã hóa (`rsa_encrypt`) và giải mã (`rsa_decrypt`).
+- `algorithms/aes_gcm.py`: Hàm `aes_gcm_encrypt` và `aes_gcm_decrypt` sử dụng thư viện PyCryptodome.
+- `algorithms/hybrid_pgp.py`: Đóng gói và giải mã luồng lai PGP (`alice_encrypt_package`, `bob_decrypt_package`).
+- `PGP_RSA_AES_Socket_3_files/`: Gồm `pgp_crypto.py`, `server_bob.py` (TCP Server, RSA 512-bit) và `client_alice.py` (TCP Client) truyền thông qua mạng LAN.
+- `src/hybrid_demo.py`: Kịch bản CLI chạy 3 kịch bản kiểm thử bảo mật (kết hợp `src/rsa.py`).
+- `src/gui_nicegui.py`: Ứng dụng web mô phỏng tương tác hai chế độ.
 
 == Ví dụ số học minh họa thuật toán RSA trên không gian nhỏ
-Để kiểm chứng tính đúng đắn toán học của thuật toán RSA cài đặt trong `algorithms/rsa.py` bằng các phép tính thủ công trên giấy, nhóm đã thực hiện tính toán thử nghiệm trên không gian số nhỏ với các tham số mô tả trong @tbl-rsa-example.
+Để kiểm chứng `algorithms/rsa.py` bằng tính toán thủ công, @tbl-rsa-example và @fig-rsa-numeric-example trình bày ví dụ trên không gian số nhỏ.
 
 #figure(
   report-table(
@@ -32,8 +32,6 @@ Hệ thống phần mềm được tổ chức phân tầng rõ ràng với lõi
   caption: [Tham số thực nghiệm tính toán số học trên không gian nhỏ của RSA.],
 ) <tbl-rsa-example>
 
-Chu trình biến đổi dữ liệu bản rõ – bản mã giữa Alice và Bob trong ví dụ số học RSA trên không gian nhỏ được thể hiện trong @fig-rsa-numeric-example.
-
 #v(0.3em)
 #align(center)[
   #fig-rsa-numeric-example <fig-rsa-numeric-example>
@@ -41,22 +39,22 @@ Chu trình biến đổi dữ liệu bản rõ – bản mã giữa Alice và Bo
 #v(0.3em)
 
 == Kết quả thực nghiệm 3 kịch bản kiểm thử an toàn
-Nhóm đã xây dựng bộ 3 kịch bản kiểm thử thực nghiệm trong `src/hybrid_demo.py` để đánh giá khả năng tự động khôi phục thông điệp và năng lực bắt lỗi vi phạm toàn vẹn dữ liệu. @tbl-test-cases tổng hợp kết quả quan sát của cả 3 kịch bản thử nghiệm.
+@tbl-test-cases tổng hợp kết quả 3 kịch bản kiểm thử trong `src/hybrid_demo.py`.
 
 #figure(
   report-table(
     columns: (1.1fr, 1.5fr, 1.6fr, 1.1fr),
     headers: ("Kịch bản", "Mô tả thực nghiệm", "Cơ chế phản ứng của hệ thống", "Kết luận"),
     rows: (
-      ([Test Case 01: \ Truyền thông hợp lệ], [Bob sử dụng đúng khóa bí mật Private Key $(d, n)$ tương ứng với Public Key của mình để giải mã.], [RSA khôi phục chính xác 16 bytes Session Key $K$; AES-GCM xác thực khớp Tag GHASH và giải mã 100% bản rõ gốc.], [*PASSED* \ Khôi phục dữ liệu chính xác tuyệt đối.]),
-      ([Test Case 02: \ Tấn công can thiệp sửa bit (MITM)], [Kẻ tấn công xen vào đường truyền, đảo 1 byte trong Ciphertext ($C_"data"[0] xor "0xFF"$) trước khi Bob nhận được.], [Khóa $K$ khôi phục đúng, nhưng hàm băm GHASH phát hiện Tag sai khác; ném ngoại lệ `ValueError: MAC check failed`, lập tức hủy gói tin.], [*PASSED* \ Chặn đứng thành công tấn công sửa đổi bản mã.]),
-      ([Test Case 03: \ Tấn công nghe lén bằng sai khóa], [Bên thứ ba (Eve) cố tình sử dụng một Private Key khác không hợp lệ để giải mã gói tin đánh cắp.], [Phép tính RSA giải mã ra giá trị Session Key $K'$ sai lệch; AES-GCM đối chiếu Tag thất bại do sai khóa và từ chối xuất dữ liệu.], [*PASSED* \ Ngăn chặn truy cập trái phép khi sai khóa bí mật.]),
+      ([Test Case 01: \ Truyền thông hợp lệ], [Bob dùng đúng Private Key $(d, n)$ để giải mã.], [RSA khôi phục 16 bytes Session Key $K$; AES-GCM khớp Tag GHASH và giải mã 100% bản rõ.], [*PASSED* \ Khôi phục chính xác 100%.]),
+      ([Test Case 02: \ Tấn công can thiệp sửa bit (MITM)], [Đảo 1 byte trong Ciphertext ($C_"data"[0] xor "0xFF"$) trên đường truyền.], [Khóa $K$ khôi phục đúng, nhưng GHASH phát hiện Tag sai khác; ném `ValueError: MAC check failed` và hủy gói tin.], [*PASSED* \ Chặn tấn công sửa đổi bản mã.]),
+      ([Test Case 03: \ Tấn công nghe lén bằng sai khóa], [Eve dùng Private Key khác không hợp lệ để giải mã gói tin.], [RSA giải ra Session Key $K'$ sai; AES-GCM đối chiếu Tag thất bại và từ chối xuất dữ liệu.], [*PASSED* \ Ngăn truy cập trái phép.]),
     ),
   ),
   caption: [Tổng hợp kết quả thực nghiệm 3 kịch bản kiểm thử bảo mật và toàn vẹn.],
 ) <tbl-test-cases>
 
-Nhật ký thực thi thực tế xuất từ màn hình dòng lệnh khi chạy `python3 src/hybrid_demo.py`:
+Nhật ký thực thi thực tế khi chạy `python3 src/hybrid_demo.py`:
 
 ```text
 =================================================================
@@ -90,11 +88,11 @@ TEST CASE 03: Giải mã bằng Private Key không hợp lệ (Khóa của Eve)
 ```
 
 == Thực nghiệm truyền thông qua Socket TCP giữa 2 máy mạng LAN
-Để tiến gần hơn tới bài toán thực tế của môn học Mạng máy tính, nhóm đã thực hiện kết nối giữa hai máy tính trong cùng mạng Wi-Fi cục bộ:
-- *Máy B (Bob – Server):* Khởi động `server_bob.py`, sinh cặp khóa RSA 512-bit và lắng nghe kết nối tại địa chỉ `0.0.0.0:5000`. Màn hình tự động in ra địa chỉ IP LAN của máy (ví dụ: `192.168.1.3`) và chuỗi SHA-256 fingerprint của Public Key.
-- *Máy A (Alice – Client):* Khởi động `client_alice.py 192.168.1.3`. Chương trình tự động gửi lệnh truy vấn `GET_PUBLIC_KEY` để lấy Public Key của Bob, in dấu vân tay SHA-256 fingerprint để người dùng đối chiếu chéo. Sau đó, Alice nhập thông điệp bản rõ và chọn một trong 3 chế độ gửi: gửi chuẩn, giả lập sửa Ciphertext, hoặc giả lập sai khóa phiên. Toàn bộ quá trình gửi nhận diễn ra tức thì với độ trễ mạng LAN dưới 15 ms và máy Bob hiển thị trực quan thông điệp nhận được cùng cảnh báo nếu bị can thiệp.
+Thử nghiệm truyền thông được thực hiện giữa hai máy tính trong cùng mạng Wi-Fi cục bộ:
+- *Máy B (Bob – Server):* Chạy `server_bob.py`, sinh cặp khóa RSA 512-bit, lắng nghe tại `0.0.0.0:5000` và hiển thị IP LAN (ví dụ `192.168.1.3`) cùng SHA-256 fingerprint của Public Key.
+- *Máy A (Alice – Client):* Chạy `client_alice.py 192.168.1.3`, gửi lệnh `GET_PUBLIC_KEY` để lấy Public Key của Bob và đối chiếu SHA-256 fingerprint. Alice nhập thông điệp và chọn 1 trong 3 chế độ gửi (gửi chuẩn, giả lập sửa Ciphertext, giả lập sai khóa phiên). Độ trễ truyền nhận qua mạng LAN dưới 15 ms; phía Bob hiển thị bản rõ giải mã hoặc cảnh báo khi phát hiện can thiệp.
 
-Quy trình bắt tay trao đổi khóa công khai và truyền nhận bản tin PGP Hybrid qua kết nối TCP Socket giữa hai máy tính được tổng hợp trong @fig-socket-sequence.
+Luồng bắt tay trao đổi khóa và truyền nhận bản tin qua TCP Socket được minh họa trong @fig-socket-sequence.
 
 #v(0.3em)
 #align(center)[
@@ -103,6 +101,6 @@ Quy trình bắt tay trao đổi khóa công khai và truyền nhận bản tin 
 #v(0.3em)
 
 == Giao diện mô phỏng trực quan NiceGUI (Web Simulator)
-Nhằm trực quan hóa luồng dữ liệu và từng bước biến đổi toán học của thuật toán, nhóm đã xây dựng ứng dụng Web Simulator bằng NiceGUI (chạy tại `http://localhost:8080`) với hai chế độ màn hình:
-+ *Chế độ "Mô Phỏng PGP (Tích Hợp)":* Trực quan hóa góc nhìn phân tán theo 3 cột thực thể: Alice (Client) $arrow.r$ Kênh Mạng TCP $arrow.r$ Bob (Server). Giao diện tích hợp sơ đồ 8 khối dữ liệu động đổi màu theo thời gian thực (vàng: đang tính toán, xanh: thành công, đỏ: lỗi can thiệp) và bảng Terminal console ở đáy màn hình có thể kéo giãn linh hoạt để quan sát từng bước biến đổi đại số.
-+ *Chế độ "Chi Tiết Từng Khối Thuật Toán":* Trực quan hóa góc nhìn chiều sâu toán học từ trên xuống dưới gồm 5 khối liên hoàn: Khối 1 (Tạo khóa RSA Bob) $arrow.r$ Khối 2 (Mã hóa AES-GCM Alice) $arrow.r$ Khối 3 (Mã hóa RSA khóa $K$) $arrow.r$ Khối 4 (Giải mã RSA khóa $K$) $arrow.r$ Khối 5 (Giải mã AES-GCM khôi phục bản rõ thông điệp $M$). Giao diện sử dụng trực tiếp giá trị số nguyên 128-bit của khóa phiên $K$ thật xuyên suốt từ Khối 2 đến Khối 5, thống nhất ký hiệu ($M$ là bản rõ, $K$ là khóa phiên) và khép kín quy trình bằng việc dùng khóa phiên đã giải mã để khôi phục nguyên vẹn thông điệp đầu vào.
+Ứng dụng Web Simulator xây dựng bằng NiceGUI (`http://localhost:8080`) cung cấp hai chế độ mô phỏng:
++ *Chế độ "Mô Phỏng PGP (Tích Hợp)":* Trình bày luồng dữ liệu theo 3 cột thực thể: Alice (Client) $arrow.r$ Kênh Mạng TCP $arrow.r$ Bob (Server), gồm sơ đồ 8 khối dữ liệu động theo thời gian thực và bảng console log ghi lại từng bước xử lý.
++ *Chế độ "Chi Tiết Từng Khối Thuật Toán":* Trình bày 5 khối tuần tự từ trên xuống: Khối 1 (Tạo khóa RSA Bob) $arrow.r$ Khối 2 (Mã hóa AES-GCM Alice) $arrow.r$ Khối 3 (Mã hóa RSA khóa $K$) $arrow.r$ Khối 4 (Giải mã RSA khóa $K$) $arrow.r$ Khối 5 (Giải mã AES-GCM khôi phục $M$). Luồng dữ liệu truyền trực tiếp giá trị số nguyên 128-bit của khóa phiên $K$ thật xuyên suốt từ Khối 2 đến Khối 5 để khôi phục thông điệp gốc.
