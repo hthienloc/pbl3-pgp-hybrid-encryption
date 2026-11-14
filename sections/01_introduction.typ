@@ -4,11 +4,11 @@
 = Giới thiệu
 
 == Bối cảnh kỹ thuật
-Theo lý thuyết an toàn mạng @stallings2017, một hệ thống truyền thông tin cậy cần bốn thuộc tính: (1) *Tính bí mật (Confidentiality)* – ngăn bên không có thẩm quyền đọc nội dung; (2) *Tính toàn vẹn (Integrity)* – bảo đảm dữ liệu không bị sửa đổi, chèn hoặc xóa trên đường truyền; (3) *Tính xác thực (Authentication)* – xác minh danh tính bên gửi; và (4) *Tính chống chối bỏ (Non-repudiation)* – bên gửi không thể phủ nhận thông điệp đã tạo.
+Theo tài liệu an toàn mạng @stallings2017, một hệ thống truyền thông tin cậy cần bốn tính chất: tính bí mật (Confidentiality) nhằm ngăn bên không có thẩm quyền đọc nội dung; tính toàn vẹn (Integrity) để bảo đảm dữ liệu không bị sửa đổi, chèn hoặc xóa trên đường truyền; tính xác thực (Authentication) giúp xác minh danh tính bên gửi; và tính chống chối bỏ (Non-repudiation) để bên gửi không thể phủ nhận thông điệp đã tạo.
 
-Hai trường phái mật mã chính giải quyết các yêu cầu này là mật mã đối xứng và bất đối xứng. AES (Advanced Encryption Standard) @nist_fips197 cho tốc độ mã hóa/giải mã cao nhờ mạng hoán vị – thay thế (SPN) tối ưu phần cứng, nhưng gặp khó khăn trong việc phân phối khóa bí mật qua mạng công khai. Ngược lại, RSA (Rivest, Shamir, Adleman, 1978) @rivest1978 giải quyết bài toán trao đổi khóa bằng cặp khóa công khai / bí mật, nhưng phép lũy thừa mô-đun trên số nguyên lớn khiến RSA chậm hơn AES từ 100 đến 1000 lần, không phù hợp để mã hóa trực tiếp thông điệp dài.
+Hai hướng mật mã chính đáp ứng các yêu cầu này là mật mã đối xứng và bất đối xứng. AES (Advanced Encryption Standard) @nist_fips197 cho tốc độ mã hóa/giải mã cao nhờ cấu trúc mạng hoán vị - thay thế (SPN) tối ưu phần cứng, nhưng khó khăn khi phải phân phối khóa bí mật qua mạng công khai. Ngược lại, RSA (Rivest, Shamir, Adleman, 1978) @rivest1978 xử lý được vấn đề trao đổi khóa bằng cặp khóa công khai và bí mật, nhưng phép lũy thừa mô-đun trên số nguyên lớn khiến RSA chậm hơn AES từ 100 đến 1000 lần, không phù hợp để mã hóa trực tiếp thông điệp dài.
 
-Chuẩn PGP và OpenPGP (RFC 4880 @rfc4880, RFC 9580 @rfc9580) kết hợp hai phương pháp qua kiến trúc *Mã hóa lai (Hybrid Encryption)*: dùng AES mã hóa bản rõ bằng khóa phiên dùng một lần (Session Key), rồi dùng RSA mã hóa khóa phiên đó bằng khóa công khai người nhận. Quy trình giữa Alice (gửi) và Bob (nhận) được minh họa trong @fig-hybrid-overview: bản rõ $M$ được mã hóa đối xứng bằng khóa phiên $K$ thành $C_"data"$ (kèm Nonce và Authentication Tag), khóa $K$ được mã hóa bất đối xứng bằng Public Key $(e_B, n)$ thành $C_"key"$; phía Bob dùng Private Key $(d_B, n)$ giải mã lấy lại $K$ để khôi phục bản rõ $M' = M$.
+Chuẩn PGP và OpenPGP (RFC 4880 @rfc4880, RFC 9580 @rfc9580) kết hợp hai phương pháp này theo mô hình mã hóa lai (Hybrid Encryption): dùng AES mã hóa bản rõ bằng khóa phiên dùng một lần (Session Key), sau đó dùng RSA mã hóa khóa phiên đó bằng khóa công khai của người nhận. Quy trình giữa Alice (gửi) và Bob (nhận) được minh họa trong @fig-hybrid-overview: bản rõ $M$ được mã hóa đối xứng bằng khóa phiên $K$ thành $C_"data"$ (kèm Nonce và Authentication Tag), khóa $K$ được mã hóa bất đối xứng bằng khóa công khai $(e_B, n)$ thành $C_"key"$; phía Bob dùng khóa bí mật $(d_B, n)$ giải mã lấy lại $K$ để khôi phục bản rõ $M' = M$.
 
 #v(0.3em)
 #align(center)[
@@ -17,16 +17,17 @@ Chuẩn PGP và OpenPGP (RFC 4880 @rfc4880, RFC 9580 @rfc9580) kết hợp hai p
 #v(0.3em)
 
 == Mục tiêu đề tài
-Đề tài PBL3: Mạng máy tính (Khoa Điện tử và Trí tuệ Nhân tạo, Trường Đại học Bách Khoa – ĐHĐN) hướng tới các mục tiêu sau:
-+ *Cơ sở số học và mật mã:* Nắm vững lý thuyết RSA (Euclid mở rộng, định lý Euler, kiểm tra nguyên tố Miller–Rabin) và mã hóa xác thực AES-GCM (Galois/Counter Mode).
-+ *Cài đặt RSA thuần Python:* Tự lập trình giải thuật RSA không dùng thư viện đen (black-box) để minh họa trực tiếp sinh khóa và lũy thừa mô-đun.
-+ *Tích hợp luồng lai PGP:* Kết nối module RSA với AES-GCM từ khâu mã hóa khóa phiên, đóng gói khung tin đến giải mã và kiểm thực.
-+ *Truyền thông Socket TCP:* Xây dựng hệ thống Client–Server qua TCP Socket có đóng khung độ dài (Length-Prefixed Framing) chống phân mảnh luồng byte giữa 2 máy mạng LAN.
-+ *Mô phỏng và kiểm thử:* Phát triển giao diện web NiceGUI gồm hai chế độ (Tích hợp luồng truyền thông và Chi tiết từng khối thuật toán), kèm bộ kịch bản kiểm thử tấn công sửa bit.
+Đề tài PBL3: Mạng máy tính (Khoa Điện tử và Trí tuệ Nhân tạo, Trường Đại học Bách Khoa - ĐHĐN) tập trung vào các mục tiêu cụ thể sau:
++ Tìm hiểu cơ sở số học của RSA (thuật toán Euclid mở rộng, định lý Euler, kiểm tra nguyên tố Miller-Rabin) và cơ chế mã hóa xác thực AES-GCM (Galois/Counter Mode).
++ Tự cài đặt thuật toán RSA bằng Python thuần, không phụ thuộc thư viện đóng gói sẵn, nhằm minh họa rõ quá trình sinh khóa và lũy thừa mô-đun.
++ Tích hợp module RSA với AES-GCM theo luồng mã hóa lai PGP, từ bước bảo vệ khóa phiên, đóng gói khung tin đến giải mã và kiểm tra toàn vẹn.
++ Xây dựng hệ thống truyền thông Client-Server qua TCP Socket có đóng khung tiền tố độ dài (Length-Prefixed Framing) để tránh phân mảnh luồng byte khi truyền giữa 2 máy trong mạng LAN.
++ Phát triển giao diện web NiceGUI gồm hai chế độ (mô phỏng luồng truyền thông tích hợp và chi tiết từng khối thuật toán), kèm các kịch bản kiểm thử tấn công sửa bit.
 
 == Phạm vi đề tài
-- *Phạm vi thực hiện:* Cài đặt Textbook RSA dạng số học (modulus 256-bit ở demo thuật toán, 512-bit ở truyền thông Socket, đủ chứa khóa AES 128-bit); dùng thư viện chuẩn AES-GCM với Nonce 12 bytes và Tag 16 bytes; đóng gói JSON Envelope truyền qua TCP Socket cổng 5000; đối chiếu SHA-256 fingerprint của Public Key; xây dựng Web Simulator NiceGUI. Hệ thống bảo đảm *Tính bí mật*, *Tính toàn vẹn* và xác thực thủ công khóa công khai qua SHA-256 fingerprint.
-- *Phạm vi chưa thực hiện:* Chưa triển khai đệm RSA-OAEP theo RFC 8017 @rfc8017 (chống tấn công Coppersmith @coppersmith1997); chưa tích hợp Chữ ký số (Digital Signature) cho tính xác thực người gửi và chống chối bỏ; chưa xây dựng Web of Trust và gói tin nhị phân đa tầng đầy đủ theo RFC 4880 @rfc4880.
+Trong khuôn khổ đồ án, nhóm cài đặt Textbook RSA dạng số học (modulus 256-bit ở phần minh họa thuật toán và 512-bit khi truyền qua Socket, đủ chứa khóa AES 128-bit); sử dụng thư viện chuẩn cho AES-GCM với Nonce 12 bytes và Tag 16 bytes; đóng gói dữ liệu dạng JSON Envelope truyền qua TCP Socket cổng 5000; đối chiếu SHA-256 fingerprint của khóa công khai và xây dựng giao diện mô phỏng bằng NiceGUI. Hệ thống đáp ứng được tính bí mật, tính toàn vẹn và hỗ trợ xác thực thủ công khóa công khai thông qua SHA-256 fingerprint.
+
+Một số phần nâng cao chưa được triển khai trong phiên bản này gồm: kỹ thuật đệm RSA-OAEP theo RFC 8017 @rfc8017 (để chống tấn công Coppersmith @coppersmith1997), chữ ký số (Digital Signature) cho tính xác thực người gửi và chống chối bỏ, cũng như mô hình Web of Trust hay cấu trúc gói tin nhị phân đa tầng đầy đủ theo RFC 4880 @rfc4880.
 
 == Phân công nhiệm vụ và đóng góp của các thành viên
 Phân công công việc của 3 thành viên được tổng hợp trong @tbl-task-allocation.

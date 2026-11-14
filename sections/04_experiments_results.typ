@@ -46,9 +46,9 @@ Hệ thống tổ chức lõi thuật toán tại `algorithms/` dùng chung cho 
     columns: (1.1fr, 1.5fr, 1.6fr, 1.1fr),
     headers: ("Kịch bản", "Mô tả thực nghiệm", "Cơ chế phản ứng của hệ thống", "Kết luận"),
     rows: (
-      ([Test Case 01: \ Truyền thông hợp lệ], [Bob dùng đúng Private Key $(d, n)$ để giải mã.], [RSA khôi phục 16 bytes Session Key $K$; AES-GCM khớp Tag GHASH và giải mã 100% bản rõ.], [*PASSED* \ Khôi phục chính xác 100%.]),
+      ([Test Case 01: \ Truyền thông hợp lệ], [Bob dùng đúng khóa bí mật $(d, n)$ để giải mã.], [RSA khôi phục 16 bytes khóa phiên $K$; AES-GCM khớp Tag GHASH và giải mã 100% bản rõ.], [*PASSED* \ Khôi phục chính xác 100%.]),
       ([Test Case 02: \ Tấn công can thiệp sửa bit (MITM)], [Đảo 1 byte trong Ciphertext ($C_"data"[0] xor "0xFF"$) trên đường truyền.], [Khóa $K$ khôi phục đúng, nhưng GHASH phát hiện Tag sai khác; ném `ValueError: MAC check failed` và hủy gói tin.], [*PASSED* \ Chặn tấn công sửa đổi bản mã.]),
-      ([Test Case 03: \ Tấn công nghe lén bằng sai khóa], [Eve dùng Private Key khác không hợp lệ để giải mã gói tin.], [RSA giải ra Session Key $K'$ sai; AES-GCM đối chiếu Tag thất bại và từ chối xuất dữ liệu.], [*PASSED* \ Ngăn truy cập trái phép.]),
+      ([Test Case 03: \ Tấn công nghe lén bằng sai khóa], [Eve dùng khóa bí mật khác không hợp lệ để giải mã gói tin.], [RSA giải ra khóa phiên $K'$ sai; AES-GCM đối chiếu Tag thất bại và từ chối xuất dữ liệu.], [*PASSED* \ Ngăn truy cập trái phép.]),
     ),
   ),
   caption: [Tổng hợp kết quả thực nghiệm 3 kịch bản kiểm thử bảo mật và toàn vẹn.],
@@ -89,8 +89,8 @@ TEST CASE 03: Giải mã bằng Private Key không hợp lệ (Khóa của Eve)
 
 == Thực nghiệm truyền thông qua Socket TCP giữa 2 máy mạng LAN
 Thử nghiệm truyền thông được thực hiện giữa hai máy tính trong cùng mạng Wi-Fi cục bộ:
-- *Máy B (Bob – Server):* Chạy `server_bob.py`, sinh cặp khóa RSA 512-bit, lắng nghe tại `0.0.0.0:5000` và hiển thị IP LAN (ví dụ `192.168.1.3`) cùng SHA-256 fingerprint của Public Key.
-- *Máy A (Alice – Client):* Chạy `client_alice.py 192.168.1.3`, gửi lệnh `GET_PUBLIC_KEY` để lấy Public Key của Bob và đối chiếu SHA-256 fingerprint. Alice nhập thông điệp và chọn 1 trong 3 chế độ gửi (gửi chuẩn, giả lập sửa Ciphertext, giả lập sai khóa phiên). Độ trễ truyền nhận qua mạng LAN dưới 15 ms; phía Bob hiển thị bản rõ giải mã hoặc cảnh báo khi phát hiện can thiệp.
+- Máy B (Server - Bob) chạy `server_bob.py`, sinh cặp khóa RSA 512-bit, lắng nghe tại `0.0.0.0:5000` và hiển thị IP LAN (ví dụ `192.168.1.3`) cùng SHA-256 fingerprint của khóa công khai.
+- Máy A (Client - Alice) chạy `client_alice.py 192.168.1.3`, gửi lệnh `GET_PUBLIC_KEY` để lấy khóa công khai của Bob và đối chiếu SHA-256 fingerprint. Alice nhập thông điệp và chọn 1 trong 3 chế độ gửi (gửi chuẩn, giả lập sửa Ciphertext, giả lập sai khóa phiên). Độ trễ truyền nhận qua mạng LAN đo được dưới 15 ms; phía Bob hiển thị bản rõ giải mã hoặc cảnh báo khi phát hiện can thiệp.
 
 Luồng bắt tay trao đổi khóa và truyền nhận bản tin qua TCP Socket được minh họa trong @fig-socket-sequence.
 
@@ -101,6 +101,4 @@ Luồng bắt tay trao đổi khóa và truyền nhận bản tin qua TCP Socket
 #v(0.3em)
 
 == Giao diện mô phỏng trực quan NiceGUI (Web Simulator)
-Ứng dụng Web Simulator xây dựng bằng NiceGUI (`http://localhost:8080`) cung cấp hai chế độ mô phỏng:
-+ *Chế độ "Mô Phỏng PGP (Tích Hợp)":* Trình bày luồng dữ liệu theo 3 cột thực thể: Alice (Client) $arrow.r$ Kênh Mạng TCP $arrow.r$ Bob (Server), gồm sơ đồ 8 khối dữ liệu động theo thời gian thực và bảng console log ghi lại từng bước xử lý.
-+ *Chế độ "Chi Tiết Từng Khối Thuật Toán":* Trình bày 5 khối tuần tự từ trên xuống: Khối 1 (Tạo khóa RSA Bob) $arrow.r$ Khối 2 (Mã hóa AES-GCM Alice) $arrow.r$ Khối 3 (Mã hóa RSA khóa $K$) $arrow.r$ Khối 4 (Giải mã RSA khóa $K$) $arrow.r$ Khối 5 (Giải mã AES-GCM khôi phục $M$). Luồng dữ liệu truyền trực tiếp giá trị số nguyên 128-bit của khóa phiên $K$ thật xuyên suốt từ Khối 2 đến Khối 5 để khôi phục thông điệp gốc.
+Ứng dụng Web Simulator xây dựng bằng NiceGUI (`http://localhost:8080`) hỗ trợ hai chế độ mô phỏng để người dùng theo dõi. Chế độ thứ nhất là "Mô Phỏng PGP (Tích Hợp)", trình bày luồng dữ liệu theo 3 cột thực thể Alice (Client) $arrow.r$ Kênh Mạng TCP $arrow.r$ Bob (Server), kèm sơ đồ 8 khối dữ liệu cập nhật theo thời gian thực và bảng console log ghi lại từng bước xử lý. Chế độ thứ hai là "Chi Tiết Từng Khối Thuật Toán", chia quy trình thành 5 khối tuần tự từ trên xuống: Khối 1 (Tạo khóa RSA Bob) $arrow.r$ Khối 2 (Mã hóa AES-GCM Alice) $arrow.r$ Khối 3 (Mã hóa RSA khóa $K$) $arrow.r$ Khối 4 (Giải mã RSA khóa $K$) $arrow.r$ Khối 5 (Giải mã AES-GCM khôi phục $M$). Ở chế độ này, giá trị số nguyên 128-bit của khóa phiên $K$ được truyền trực tiếp xuyên suốt từ Khối 2 đến Khối 5 để khôi phục thông điệp gốc.
