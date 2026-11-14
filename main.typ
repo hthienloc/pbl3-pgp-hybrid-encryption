@@ -1,4 +1,5 @@
 #import "template.typ": project
+#import "theme.typ": color-primary, font-heading, font-body
 
 #show: project.with(
   institution: "TRƯỜNG ĐẠI HỌC BÁCH KHOA – ĐẠI HỌC ĐÀ NẴNG\nKHOA ĐIỆN TỬ VÀ TRÍ TUỆ NHÂN TẠO",
@@ -7,9 +8,9 @@
   sub-title: "Nghiên cứu và mô phỏng cơ chế mã hóa lai (Hybrid Encryption) kết hợp RSA và AES-GCM",
   author-str: "Sinh viên thực hiện:\n- Vũ Duy Dương (106230007)\n- Huỳnh Thiện Lộc (106230052)\n- Phan Vĩnh Sơn (106230059)",
   affiliation-str: "Học phần: PBL3: Mạng máy tính\nGVHD: TS. Trần Thị Minh Hạnh\nĐà Nẵng, 2026",
-  heading-color: rgb("#1e40af"),
-  heading-font: "Times New Roman",
-  body-font: "Times New Roman",
+  heading-color: color-primary,
+  heading-font: font-heading,
+  body-font: font-body,
 )
 
 #include "sections/00_abbreviations.typ"

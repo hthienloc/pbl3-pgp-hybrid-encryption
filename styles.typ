@@ -1,4 +1,5 @@
 #import "@preview/fletcher:0.5.6" as fletcher: node, edge
+#import "theme.typ": color-surface-tint, color-surface-subtle, color-border, color-text-muted
 
 // --- BẢNG ĐẶC TẢ ĐỒ THỊ CHUẨN MONOCHROME ---
 #let stroke-data = 0.8pt + black
@@ -43,7 +44,7 @@
     spacing: 2pt,
     if gender == "female" { user-icon-alice } else { user-icon-bob },
     text(size: 8pt, weight: "bold")[#name],
-    text(size: 7pt, fill: luma(90))[#role]
+    text(size: 7pt, fill: color-text-muted)[#role]
   )
 }
 
@@ -69,12 +70,12 @@
   )
 }
 
-// Bảng biểu chuẩn hóa đơn sắc (Monochrome Table)
+// Bảng biểu chuẩn hóa thống nhất theo bảng màu báo cáo
 #let report-table(columns: (1fr, 1fr), headers: (), rows: ()) = {
   table(
     columns: columns,
-    fill: (x, y) => if y == 0 { luma(242) } else if calc.even(y) { luma(250) } else { none },
-    stroke: 0.5pt + luma(180),
+    fill: (x, y) => if y == 0 { color-surface-tint } else if calc.even(y) { color-surface-subtle } else { none },
+    stroke: 0.5pt + color-border,
     inset: 8pt,
     ..headers.map(h => align(center)[#strong(h)]),
     ..rows.flatten()

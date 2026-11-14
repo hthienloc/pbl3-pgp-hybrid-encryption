@@ -1,6 +1,12 @@
 #import "@preview/fletcher:0.5.6" as fletcher: diagram, node, edge
 #import "@preview/chronos:0.3.0"
-#import "@preview/diagraph:0.3.8": raw-render
+#import "theme.typ": (
+  color-text-muted,
+  color-text-subtle,
+  color-surface-tint,
+  color-surface-subtle,
+  color-surface-cond,
+)
 #import "styles.typ": (
   d-node,
   entity-badge,
@@ -22,14 +28,14 @@
 #let fig-hybrid-overview = figure(
   f-diagram(
     spacing: (10mm, 7mm),
-    node-stroke: 0.7pt + luma(60),
+    node-stroke: 0.7pt + color-text-muted,
     node-corner-radius: 3pt,
     edge-stroke: 0.75pt + black,
     {
       // Styles
-      let box-proc = (fill: rgb("#f1f5f9"), width: 32mm, inset: 5pt)
+      let box-proc = (fill: color-surface-tint, width: 32mm, inset: 5pt)
       let box-data = (fill: white, width: 32mm, inset: 5pt)
-      let box-key = (fill: white, stroke: (paint: luma(80), thickness: 0.7pt, dash: "dashed"), shape: fletcher.shapes.pill, width: 32mm, inset: 5pt)
+      let box-key = (fill: white, stroke: (paint: color-text-subtle, thickness: 0.7pt, dash: "dashed"), shape: fletcher.shapes.pill, width: 32mm, inset: 5pt)
 
       // Alice cluster
       node((0, 0), align(center)[*Bản rõ gốc*\ $M$], ..box-data, name: <m>)
@@ -44,13 +50,13 @@
 
       node(
         enclose: (<m>, <pub>, <cd>, <ck>),
-        stroke: (paint: rgb("#64748b"), thickness: 0.7pt, dash: "dashed"),
+        stroke: (paint: color-text-subtle, thickness: 0.7pt, dash: "dashed"),
         fill: none,
         inset: 10pt,
         corner-radius: 5pt,
         name: <alice_box>,
       )
-      node((0, -0.52), text(size: 8.5pt, weight: "bold", fill: rgb("#475569"))[Phía Alice (Mã hóa)], stroke: none, fill: white, inset: 2pt)
+      node((0, -0.52), text(size: 9pt, weight: "bold", fill: color-text-muted)[Phía Alice (Mã hóa)], stroke: none, fill: white, inset: 2pt)
 
       edge(<m>, <aes_e>, "-|>")
       edge(<k>, (1, 0.5), (0.35, 0.5), <aes_e>, "--|>")
@@ -62,7 +68,7 @@
       // Network transmission
       edge(<cd>, <bcd>, "..|>")
       edge(<ck>, <bck>, "..|>")
-      node((1, 2.6), text(size: 8pt, fill: luma(60))[Kênh mạng (+ Nonce, Tag)], stroke: none, fill: white, inset: 2pt)
+      node((1, 2.6), text(size: 8pt, fill: color-text-muted)[Kênh mạng (+ Nonce, Tag)], stroke: none, fill: white, inset: 2pt)
 
       // Bob cluster
       node((0, 3.75), align(center)[*Bản mã dữ liệu*\ $C_("data")$], ..box-data, name: <bcd>)
@@ -76,13 +82,13 @@
 
       node(
         enclose: (<bcd>, <priv>, <m_out>),
-        stroke: (paint: rgb("#64748b"), thickness: 0.7pt, dash: "dashed"),
+        stroke: (paint: color-text-subtle, thickness: 0.7pt, dash: "dashed"),
         fill: none,
         inset: 10pt,
         corner-radius: 5pt,
         name: <bob_box>,
       )
-      node((1, 3.22), text(size: 8.5pt, weight: "bold", fill: rgb("#475569"))[Phía Bob (Giải mã)], stroke: none, fill: white, inset: 2pt)
+      node((1, 3.22), text(size: 9pt, weight: "bold", fill: color-text-muted)[Phía Bob (Giải mã)], stroke: none, fill: white, inset: 2pt)
 
       edge(<bcd>, <aes_d>, "-|>")
       edge(<bck>, <rsa_d>, "-|>")
@@ -99,11 +105,11 @@
 #let fig-sequence-interaction = figure(
   chronos.diagram(width: 100%, {
     import chronos: *
-    _par("A", display-name: [*Alice*\ #text(size: 8pt, fill: luma(80))[Người gửi]], color: white, show-bottom: true)
-    _par("C", display-name: [*Kênh mạng*\ #text(size: 8pt, fill: luma(80))[Truyền thông]], color: white, show-bottom: true)
-    _par("B", display-name: [*Bob*\ #text(size: 8pt, fill: luma(80))[Người nhận]], color: white, show-bottom: true)
+    _par("A", display-name: [*Alice*\ #text(size: 8pt, fill: color-text-subtle)[Người gửi]], color: white, show-bottom: true)
+    _par("C", display-name: [*Kênh mạng*\ #text(size: 8pt, fill: color-text-subtle)[Truyền thông]], color: white, show-bottom: true)
+    _par("B", display-name: [*Bob*\ #text(size: 8pt, fill: color-text-subtle)[Người nhận]], color: white, show-bottom: true)
 
-    _note("over", pos: "B", shape: "rect", color: luma(248))[
+    _note("over", pos: "B", shape: "rect", color: color-surface-subtle)[
       #align(left)[
         *0. Sinh cặp khóa RSA:*\
         Public Key $(e_B, n)$, Private Key $(d_B, n)$
@@ -111,7 +117,7 @@
     ]
     _seq("B", "A", comment: [Công khai Public Key $(e_B, n)$], dashed: true)
 
-    _note("over", pos: "A", shape: "rect", color: luma(248))[
+    _note("over", pos: "A", shape: "rect", color: color-surface-subtle)[
       #align(left)[
         *1. Sinh khóa phiên* $K$ và vector $"IV"$\
         *2. Mã hóa AES-GCM:* $(C_("data"), "Tag") = "AES"_K (M, "IV")$\
@@ -122,7 +128,7 @@
     _seq("A", "C", comment: [Gửi gói tin PGP: $\{C_("key"), "IV", C_("data"), "Tag"\}$])
     _seq("C", "B", comment: [Tiếp nhận gói tin PGP])
 
-    _note("over", pos: "B", shape: "rect", color: luma(248))[
+    _note("over", pos: "B", shape: "rect", color: color-surface-subtle)[
       #align(left)[
         *4. Giải mã RSA:* $K = "RSA"_(d_B)(C_("key"))$\
         *5. Xác thực toàn vẹn:* Đối chiếu $"Tag"$ (GHASH)\
@@ -137,13 +143,13 @@
 #let fig-rsa-numeric-example = figure(
   f-diagram(
     spacing: (14mm, 7mm),
-    node-stroke: 0.7pt + luma(60),
+    node-stroke: 0.7pt + color-text-muted,
     node-corner-radius: 3pt,
     edge-stroke: 0.75pt + black,
     {
-      let box-proc = (fill: rgb("#f1f5f9"), width: 42mm, inset: 5pt)
+      let box-proc = (fill: color-surface-tint, width: 42mm, inset: 5pt)
       let box-data = (fill: white, width: 34mm, inset: 5pt)
-      let box-key = (fill: white, stroke: (paint: luma(80), thickness: 0.7pt, dash: "dashed"), shape: fletcher.shapes.pill, width: 40mm, inset: 5pt)
+      let box-key = (fill: white, stroke: (paint: color-text-subtle, thickness: 0.7pt, dash: "dashed"), shape: fletcher.shapes.pill, width: 40mm, inset: 5pt)
 
       // Alice
       node((-0.7, 0), align(center)[*Bản rõ*\ $M = 125$], ..box-data, name: <m>)
@@ -153,12 +159,12 @@
 
       node(
         enclose: (<m>, <pub>, <c>),
-        stroke: (paint: rgb("#64748b"), thickness: 0.7pt, dash: "dashed"),
+        stroke: (paint: color-text-subtle, thickness: 0.7pt, dash: "dashed"),
         fill: none,
         inset: 10pt,
         corner-radius: 5pt,
       )
-      node((0, -0.55), text(size: 8.5pt, weight: "bold", fill: rgb("#475569"))[Alice (Bên gửi)], stroke: none, fill: white, inset: 2pt)
+      node((0, -0.55), text(size: 9pt, weight: "bold", fill: color-text-muted)[Alice (Bên gửi)], stroke: none, fill: white, inset: 2pt)
 
       edge(<m>, (-0.7, 0.5), (-0.35, 0.5), <enc>, "-|>")
       edge(<pub>, (0.7, 0.5), (0.35, 0.5), <enc>, "--|>")
@@ -175,12 +181,12 @@
 
       node(
         enclose: (<c_bob>, <priv>, <m2>),
-        stroke: (paint: rgb("#64748b"), thickness: 0.7pt, dash: "dashed"),
+        stroke: (paint: color-text-subtle, thickness: 0.7pt, dash: "dashed"),
         fill: none,
         inset: 10pt,
         corner-radius: 5pt,
       )
-      node((0, 2.6), text(size: 8.5pt, weight: "bold", fill: rgb("#475569"))[Bob (Bên nhận)], stroke: none, fill: white, inset: 2pt)
+      node((0, 2.6), text(size: 9pt, weight: "bold", fill: color-text-muted)[Bob (Bên nhận)], stroke: none, fill: white, inset: 2pt)
 
       edge(<c_bob>, (-0.7, 3.6), (-0.35, 3.6), <dec>, "-|>")
       edge(<priv>, (0.7, 3.6), (0.35, 3.6), <dec>, "--|>")
@@ -194,44 +200,44 @@
 #let fig-packet-layout = figure(
   f-diagram(
     spacing: (2.5mm, 12mm),
-    node-stroke: 0.7pt + luma(60),
+    node-stroke: 0.7pt + color-text-muted,
     node-corner-radius: 3pt,
     edge-stroke: 0.75pt + black,
     {
       let box-field = (fill: white, width: 24.5mm, inset: 4pt)
-      let box-step = (fill: rgb("#f8fafc"), width: 24.5mm, inset: 4pt)
+      let box-step = (fill: color-surface-subtle, width: 24.5mm, inset: 4pt)
 
       // Top row: packet fields
-      node((0, 0), align(center)[#text(size: 7.5pt)[*4 Bytes (Big-Endian)*\ *Độ dài gói*\ #text(size: 6.5pt, fill: luma(80))[Tiền tố độ dài]]], ..box-field, name: <f_len>)
-      node((1, 0), align(center)[#text(size: 7.5pt)[*Khóa phiên mã hóa*\ $C_("key")$\ #text(size: 6.5pt, fill: luma(80))[Mã hóa RSA]]], ..box-field, name: <f_key>)
-      node((2, 0), align(center)[#text(size: 7.5pt)[*Vector khởi tạo*\ *Nonce / IV (12B)*\ #text(size: 6.5pt, fill: luma(80))[Dùng một lần]]], ..box-field, name: <f_nonce>)
-      node((3, 0), align(center)[#text(size: 7.5pt)[*Bản mã dữ liệu*\ $C_("data")$\ #text(size: 6.5pt, fill: luma(80))[Mã hóa AES-CTR]]], ..box-field, name: <f_data>)
-      node((4, 0), align(center)[#text(size: 7.5pt)[*Thẻ xác thực*\ *Auth Tag (16B)*\ #text(size: 6.5pt, fill: luma(80))[Hàm băm GHASH]]], ..box-field, name: <f_tag>)
+      node((0, 0), align(center)[#text(size: 8pt)[*4 Bytes (Big-Endian)*\ *Độ dài gói*\ #text(size: 7pt, fill: color-text-subtle)[Tiền tố độ dài]]], ..box-field, name: <f_len>)
+      node((1, 0), align(center)[#text(size: 8pt)[*Khóa phiên mã hóa*\ $C_("key")$\ #text(size: 7pt, fill: color-text-subtle)[Mã hóa RSA]]], ..box-field, name: <f_key>)
+      node((2, 0), align(center)[#text(size: 8pt)[*Vector khởi tạo*\ *Nonce / IV (12B)*\ #text(size: 7pt, fill: color-text-subtle)[Dùng một lần]]], ..box-field, name: <f_nonce>)
+      node((3, 0), align(center)[#text(size: 8pt)[*Bản mã dữ liệu*\ $C_("data")$\ #text(size: 7pt, fill: color-text-subtle)[Mã hóa AES-CTR]]], ..box-field, name: <f_data>)
+      node((4, 0), align(center)[#text(size: 8pt)[*Thẻ xác thực*\ *Auth Tag (16B)*\ #text(size: 7pt, fill: color-text-subtle)[Hàm băm GHASH]]], ..box-field, name: <f_tag>)
 
       node(
         enclose: (<f_len>, <f_tag>),
-        stroke: (paint: rgb("#64748b"), thickness: 0.7pt, dash: "dashed"),
+        stroke: (paint: color-text-subtle, thickness: 0.7pt, dash: "dashed"),
         fill: none,
         inset: 12pt,
         corner-radius: 5pt,
       )
-      node((2, -0.45), box(width: 0pt, align(center, text(size: 8pt, weight: "bold", fill: rgb("#475569"))[#box(width: 110mm)[Khung gói tin TCP: \[4B Big-Endian Length\] + \[JSON Envelope UTF-8\]]])), stroke: none, fill: none, inset: 0pt)
+      node((2, -0.45), box(width: 0pt, align(center, text(size: 8pt, weight: "bold", fill: color-text-muted)[#box(width: 110mm)[Khung gói tin TCP: \[4B Big-Endian Length\] + \[JSON Envelope UTF-8\]]])), stroke: none, fill: none, inset: 0pt)
 
       // Bottom row: Bob parsing steps
-      node((0, 1), align(center)[#text(size: 7.5pt)[*1. Đọc khung*\ Đọc đủ độ dài\ #text(size: 6.5pt, fill: luma(80))[Tách gói JSON]]], ..box-step, name: <p_len>)
-      node((1, 1), align(center)[#text(size: 7.5pt)[*2. Giải mã RSA*\ Khôi phục khóa $K'$\ #text(size: 6.5pt, fill: luma(80))[Dùng khóa bí mật]]], ..box-step, name: <p_key>)
-      node((2, 1), align(center)[#text(size: 7.5pt)[*3. Khởi tạo bộ đếm*\ Nạp Nonce / IV\ #text(size: 6.5pt, fill: luma(80))[Tạo $J_0$ và $"CB"_i$]]], ..box-step, name: <p_nonce>)
-      node((3, 1), align(center)[#text(size: 7.5pt)[*4. Giải mã AES*\ Giải mã dòng CTR\ #text(size: 6.5pt, fill: luma(80))[Khôi phục $M'$]]], ..box-step, name: <p_data>)
-      node((4, 1), align(center)[#text(size: 7.5pt)[*5. Kiểm tra Tag*\ Đối chiếu GHASH\ #text(size: 6.5pt, fill: luma(80))[Chống sửa đổi]]], ..box-step, name: <p_tag>)
+      node((0, 1), align(center)[#text(size: 8pt)[*1. Đọc khung*\ Đọc đủ độ dài\ #text(size: 7pt, fill: color-text-subtle)[Tách gói JSON]]], ..box-step, name: <p_len>)
+      node((1, 1), align(center)[#text(size: 8pt)[*2. Giải mã RSA*\ Khôi phục khóa $K'$\ #text(size: 7pt, fill: color-text-subtle)[Dùng khóa bí mật]]], ..box-step, name: <p_key>)
+      node((2, 1), align(center)[#text(size: 8pt)[*3. Khởi tạo bộ đếm*\ Nạp Nonce / IV\ #text(size: 7pt, fill: color-text-subtle)[Tạo $J_0$ và $"CB"_i$]]], ..box-step, name: <p_nonce>)
+      node((3, 1), align(center)[#text(size: 8pt)[*4. Giải mã AES*\ Giải mã dòng CTR\ #text(size: 7pt, fill: color-text-subtle)[Khôi phục $M'$]]], ..box-step, name: <p_data>)
+      node((4, 1), align(center)[#text(size: 8pt)[*5. Kiểm tra Tag*\ Đối chiếu GHASH\ #text(size: 7pt, fill: color-text-subtle)[Chống sửa đổi]]], ..box-step, name: <p_tag>)
 
       node(
         enclose: (<p_len>, <p_tag>),
-        stroke: (paint: rgb("#64748b"), thickness: 0.7pt, dash: "dashed"),
+        stroke: (paint: color-text-subtle, thickness: 0.7pt, dash: "dashed"),
         fill: none,
         inset: 12pt,
         corner-radius: 5pt,
       )
-      node((2, 1.45), box(width: 0pt, align(center, text(size: 8pt, weight: "bold", fill: rgb("#475569"))[#box(width: 110mm)[Phân tích cú pháp và xử lý tuần tự tại bộ nhận của Bob]])), stroke: none, fill: none, inset: 0pt)
+      node((2, 1.45), box(width: 0pt, align(center, text(size: 8pt, weight: "bold", fill: color-text-muted)[#box(width: 110mm)[Phân tích cú pháp và xử lý tuần tự tại bộ nhận của Bob]])), stroke: none, fill: none, inset: 0pt)
 
       // Clean straight vertical arrows
       edge(<f_len>, <p_len>, "-|>")
@@ -249,11 +255,11 @@
 #let fig-socket-sequence = figure(
   chronos.diagram(width: 100%, {
     import chronos: *
-    _par("A", display-name: [*Alice (TCP Client)*\ #text(size: 8pt, fill: luma(80))[Máy gửi]], color: white, show-bottom: true)
-    _par("C", display-name: [*Kênh TCP :5000*\ #text(size: 8pt, fill: luma(80))[Length-prefixed JSON]], color: white, show-bottom: true)
-    _par("B", display-name: [*Bob (TCP Server)*\ #text(size: 8pt, fill: luma(80))[Máy nhận]], color: white, show-bottom: true)
+    _par("A", display-name: [*Alice (TCP Client)*\ #text(size: 8pt, fill: color-text-subtle)[Máy gửi]], color: white, show-bottom: true)
+    _par("C", display-name: [*Kênh TCP :5000*\ #text(size: 8pt, fill: color-text-subtle)[Length-prefixed JSON]], color: white, show-bottom: true)
+    _par("B", display-name: [*Bob (TCP Server)*\ #text(size: 8pt, fill: color-text-subtle)[Máy nhận]], color: white, show-bottom: true)
 
-    _note("over", pos: "B", shape: "rect", color: luma(248))[
+    _note("over", pos: "B", shape: "rect", color: color-surface-subtle)[
       #align(left)[
         *0. Khởi tạo Server:*\
         Sinh khóa RSA $(e_B, n), (d_B, n)$\
@@ -264,11 +270,11 @@
     _seq("A", "B", comment: [1. Yêu cầu lấy khóa công khai])
     _seq("B", "A", comment: [2. Trả Public Key $(e_B, n)$], dashed: true)
 
-    _note("across", shape: "rect", color: luma(248))[
+    _note("across", shape: "rect", color: color-surface-subtle)[
       *3. Xác thực ngoại vi (Out-of-Band):* Đối chiếu SHA-256 Public Key Fingerprint
     ]
 
-    _note("over", pos: "A", shape: "rect", color: luma(248))[
+    _note("over", pos: "A", shape: "rect", color: color-surface-subtle)[
       #align(left)[
         *4. Đóng gói Hybrid PGP:*\
         - Sinh khóa phiên $K$ (16B) & $"nonce"$ (12B)\
@@ -280,7 +286,7 @@
     _seq("A", "C", comment: [5. Gửi `[4B Length] + JSON Envelope`])
     _seq("C", "B", comment: [$C_("key")$ (hex), $"nonce", C_("data"), "Tag"$ (Base64)])
 
-    _note("over", pos: "B", shape: "rect", color: luma(248))[
+    _note("over", pos: "B", shape: "rect", color: color-surface-subtle)[
       #align(left)[
         *6. Giải mã & Xác thực:*\
         - $K = "RSA"_(d_B)(C_("key"))$\
@@ -297,13 +303,13 @@
 #let fig-aes-spn-flow = figure(
   f-diagram(
     spacing: (10mm, 5mm),
-    node-stroke: 0.7pt + luma(60),
+    node-stroke: 0.7pt + color-text-muted,
     node-corner-radius: 3pt,
     edge-stroke: 0.75pt + black,
     {
       let box-main = (fill: white, width: 84mm, inset: 4.5pt)
-      let box-proc = (fill: rgb("#f1f5f9"), width: 84mm, inset: 4.5pt)
-      let box-cond = (fill: rgb("#fffbeb"), shape: fletcher.shapes.diamond, width: 60mm, inset: 4pt)
+      let box-proc = (fill: color-surface-tint, width: 84mm, inset: 4.5pt)
+      let box-cond = (fill: color-surface-cond, shape: fletcher.shapes.diamond, width: 60mm, inset: 4pt)
 
       node((0, 0), [*Khối bản rõ 128-bit* (Ma trận trạng thái $4 times 4$ byte)], ..box-main, name: <in_blk>)
       node((0, 1), [*Khởi tạo vòng 0:* Cộng khóa vòng (`AddRoundKey`)], ..box-proc, name: <init_key>)
@@ -337,17 +343,17 @@
 #let fig-aes-gcm-flow = figure(
   f-diagram(
     spacing: (7mm, 6mm),
-    node-stroke: 0.7pt + luma(60),
+    node-stroke: 0.7pt + color-text-muted,
     node-corner-radius: 3pt,
     edge-stroke: 0.75pt + black,
     {
       let box-main = (fill: white, width: 58mm, inset: 4.5pt)
-      let box-proc = (fill: rgb("#f1f5f9"), width: 58mm, inset: 4.5pt)
+      let box-proc = (fill: color-surface-tint, width: 58mm, inset: 4.5pt)
       let box-side = (fill: white, width: 32mm, inset: 4.5pt)
 
       // Left column (J0 branch)
       node((-1, 0), align(center)[*Khối đếm đầu*\ $J_0 = "Nonce" || 1$], ..box-side, name: <cb_init>)
-      node((-1, 2), align(center)[*Mã hóa*\ $"AES"_K (J_0)$], ..box-side, fill: rgb("#f1f5f9"), name: <aes_j0>)
+      node((-1, 2), align(center)[*Mã hóa*\ $"AES"_K (J_0)$], ..box-side, fill: color-surface-tint, name: <aes_j0>)
 
       // Center column (CTR + GHASH spine)
       node((0, 1), align(center)[*Tăng bộ đếm*\ $"CB"_i = "inc"_(32)("CB"_(i-1))$], ..box-proc, name: <cb_inc>)

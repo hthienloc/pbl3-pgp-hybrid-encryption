@@ -2,6 +2,18 @@
 #import "@preview/hydra:0.6.2": hydra
 #import "@preview/codly:1.3.0": *
 #import "@preview/codly-languages:0.1.8": codly-languages
+#import "theme.typ": (
+  font-body,
+  font-heading,
+  font-mono,
+  color-primary,
+  color-text-dark,
+  color-text-muted,
+  color-surface-tint,
+  color-surface-subtle,
+  color-border,
+  color-border-light,
+)
 
 #let project(
   institution: "TRƯỜNG ĐẠI HỌC BÁCH KHOA – ĐẠI HỌC ĐÀ NẴNG\nKHOA ĐIỆN TỬ VÀ TRÍ TUỆ NHÂN TẠO",
@@ -11,9 +23,9 @@
   author-str: "Vũ Duy Dương (106230007), Huỳnh Thiện Lộc (106230052), Phan Vĩnh Sơn (106230059)",
   affiliation-str: "PBL3: Mạng máy tính | GVHD: TS. Trần Thị Minh Hạnh | Đà Nẵng, 2026",
   language: "vi",
-  heading-color: rgb("#1d4ed8"),
-  heading-font: "Times New Roman",
-  body-font: "Times New Roman",
+  heading-color: color-primary,
+  heading-font: font-heading,
+  body-font: font-body,
   body,
 ) = {
   // Đồng bộ cấu hình lề 2.54cm (1 inch) & cỡ chữ 13pt, giãn dòng ~1.3 theo mẫu
@@ -49,7 +61,7 @@
         ),
       ),
     )
-    set text(font: heading-font, size: 12pt, fill: rgb("#0f172a"))
+    set text(font: heading-font, size: 12pt, fill: color-text-dark)
 
     v(0.6cm)
 
@@ -88,7 +100,7 @@
         width: 90%,
         inset: (x: 12pt, y: 14pt),
         stroke: (top: 1.2pt + heading-color, bottom: 1.2pt + heading-color),
-        fill: rgb("#f8fafc"),
+        fill: color-surface-subtle,
       )[
         #set par(leading: 0.65em)
         #text(size: 12pt, weight: "bold")[ĐỀ TÀI] \
@@ -105,12 +117,12 @@
     align(center)[
       #block(width: 88%)[
         #set align(left)
-        #set text(size: 11.5pt)
+        #set text(size: 12pt)
         #table(
           columns: (38pt, 1fr, 100pt),
-          stroke: 0.5pt + rgb("#cbd5e1"),
+          stroke: 0.5pt + color-border,
           inset: (x: 10pt, y: 7pt),
-          fill: (x, y) => if y <= 2 { rgb("#f8fafc") } else { none },
+          fill: (x, y) => if y <= 2 { color-surface-subtle } else { none },
           table.cell(colspan: 3)[
             *Giảng viên hướng dẫn:* TS. Trần Thị Minh Hạnh
           ],
@@ -129,7 +141,7 @@
 
     // Khối 5: Địa điểm & Thời gian ở chân trang
     align(center)[
-      #line(length: 25%, stroke: 0.6pt + rgb("#cbd5e1"))
+      #line(length: 25%, stroke: 0.6pt + color-border)
       #v(0.3em)
       #text(size: 12pt, weight: "bold")[Đà Nẵng, năm 2026]
     ]
@@ -147,16 +159,16 @@
         columns: (1fr,),
         align: left,
         row-gutter: 0.5em,
-        text(font: heading-font, size: 9.5pt, fill: rgb("#475569"),
+        text(font: heading-font, size: 10pt, fill: color-text-muted,
           context { hydra(1, use-last: false, skip-starting: false) }
         ),
-        line(length: 100%, stroke: 0.5pt + rgb("#cbd5e1")),
+        line(length: 100%, stroke: 0.5pt + color-border),
       )
     },
     header-ascent: 1.5em,
     footer: context {
       align(center)[
-        #text(font: heading-font, size: 10.5pt, number-type: "lining")[
+        #text(font: heading-font, size: 11pt, number-type: "lining")[
           #counter(page).display("1")
         ]
       ]
@@ -174,7 +186,7 @@
   // Định dạng chú thích Hình (dưới) và Bảng (trên) theo mẫu: "Hình 1. ...", "Bảng 1. ..."
   set figure.caption(separator: [. ])
   show figure.where(kind: table): set figure.caption(position: top)
-  show figure.caption: set text(size: 11.5pt)
+  show figure.caption: set text(size: 12pt)
 
   // 3. MỤC LỤC (CÙNG LỀ VÀ PHONG CÁCH)
   show outline.entry.where(level: 1): it => {
@@ -214,23 +226,23 @@
   // JetBrains Mono hiển thị dấu tiếng Việt đúng vị trí (DejaVu Sans Mono bị lệch dấu);
   // tắt ligature (calt) để giữ nguyên toán tử như `!=`, `==`
   show raw: set text(ligatures: false, features: (calt: 0))
-  show raw.where(block: true): set text(size: 8.5pt, font: ("JetBrains Mono", "Noto Sans Mono", "Liberation Mono"))
+  show raw.where(block: true): set text(size: 9pt, font: font-mono)
   show: codly-init.with()
   codly(
     languages: codly-languages,
-    zebra-fill: rgb("#f8fafc"),
-    stroke: 0.5pt + rgb("#e2e8f0"),
+    zebra-fill: color-surface-subtle,
+    stroke: 0.5pt + color-border-light,
     radius: 4pt,
   )
 
   // Định dạng inline code
   show raw.where(block: false): it => {
     box(
-      fill: rgb("#f1f5f9"),
+      fill: color-surface-tint,
       inset: (x: 3.5pt, y: 1.5pt),
       baseline: 0%,
       radius: 3pt,
-      text(size: 9pt, font: ("JetBrains Mono", "Noto Sans Mono", "Liberation Mono"), fill: rgb("#0f172a"))[#it]
+      text(size: 9pt, font: font-mono, fill: color-text-dark)[#it]
     )
   }
 
