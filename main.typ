@@ -12,6 +12,7 @@
   body-font: "Times New Roman",
 )
 
+#include "sections/00_abbreviations.typ"
 #include "sections/00_abstract.typ"
 #include "sections/01_introduction.typ"
 #include "sections/02_related_work.typ"

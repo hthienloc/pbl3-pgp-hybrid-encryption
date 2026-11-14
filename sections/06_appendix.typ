@@ -2,7 +2,28 @@
 
 #heading(numbering: none, outlined: true)[PHỤ LỤC]
 
-#heading(level: 2, numbering: none, outlined: true)[Phụ lục A: Cài đặt giải thuật Euclid mở rộng và RSA số học]
+#heading(level: 2, numbering: none, outlined: true)[Phụ lục A: Cấu trúc mã nguồn và hướng dẫn chạy chương trình]
+
+Hệ thống phần mềm được tổ chức phân tầng với lõi thuật toán đặt tại thư mục `algorithms/` và tái sử dụng cho ứng dụng web NiceGUI, kịch bản kiểm thử CLI và mô hình Socket LAN:
+- `algorithms/euclid.py`: Cài đặt giải thuật Euclid mở rộng (`extended_gcd`) và tìm nghịch đảo mô-đun (`mod_inverse`).
+- `algorithms/rsa.py`: Cài đặt kiểm tra nguyên tố Miller–Rabin (`is_prime`, mặc định `k = 20`), sinh số nguyên tố (`generate_prime`), sinh cặp khóa (`generate_rsa_keys`), mã hóa (`rsa_encrypt`) và giải mã (`rsa_decrypt`).
+- `algorithms/aes_gcm.py`: Cài đặt mã hóa (`aes_gcm_encrypt`) và giải mã có kiểm thực (`aes_gcm_decrypt`) dựa trên PyCryptodome.
+- `algorithms/hybrid_pgp.py`: Đóng gói (`alice_encrypt_package`) và giải mã (`bob_decrypt_package`) luồng dữ liệu lai.
+- `PGP_RSA_AES_Socket_3_files/`: Gồm `pgp_crypto.py`, `server_bob.py` (TCP Server, khóa RSA 512-bit) và `client_alice.py` (TCP Client).
+- `src/hybrid_demo.py`: Kịch bản dòng lệnh chạy 3 kịch bản kiểm thử an toàn.
+- `src/gui_nicegui.py`: Ứng dụng web mô phỏng tương tác trên nền NiceGUI (chạy tại cổng `8080`).
+
+Hướng dẫn cài đặt thư viện và chạy thử nghiệm từ thư mục gốc dự án:
+
+```bash
+pip install -r requirements.txt
+python3 src/hybrid_demo.py          # Chạy 3 kịch bản kiểm thử CLI
+python3 src/gui_nicegui.py          # Khởi động Web Simulator tại http://localhost:8080
+python3 PGP_RSA_AES_Socket_3_files/server_bob.py        # Chạy trên máy nhận (Bob)
+python3 PGP_RSA_AES_Socket_3_files/client_alice.py <IP> # Chạy trên máy gửi (Alice)
+```
+
+#heading(level: 2, numbering: none, outlined: true)[Phụ lục B: Cài đặt giải thuật Euclid mở rộng và RSA số học]
 
 Mã nguồn mô-đun `algorithms/euclid.py`:
 
@@ -63,13 +84,21 @@ def generate_prime(bits=128):
             return candidate
 
 def generate_rsa_keys(p=None, q=None, e=65537, bits=256):
-    if p is None or q is None:
+    if p is None and q is None:
         prime_bits = max(bits // 2, 72)
         while True:
             p = generate_prime(prime_bits)
             q = generate_prime(prime_bits)
             if p != q and extended_gcd(e, (p - 1) * (q - 1))[0] == 1:
                 break
+    elif p is None or q is None:
+        raise ValueError("Phải cung cấp đồng thời cả p và q, hoặc để trống cả hai để sinh ngẫu nhiên.")
+    else:
+        if p == q or not is_prime(p) or not is_prime(q):
+            raise ValueError("p và q phải là hai số nguyên tố phân biệt.")
+        if extended_gcd(e, (p - 1) * (q - 1))[0] != 1:
+            raise ValueError("e và phi(n) phải nguyên tố cùng nhau.")
+
     n = p * q
     phi = (p - 1) * (q - 1)
     d = mod_inverse(e, phi)
@@ -88,7 +117,7 @@ def rsa_decrypt(private_key, ciphertext_num):
     return pow(ciphertext_num, d, n)
 ```
 
-#heading(level: 2, numbering: none, outlined: true)[Phụ lục B: Cài đặt AES-GCM và bộ đóng gói PGP Hybrid]
+#heading(level: 2, numbering: none, outlined: true)[Phụ lục C: Cài đặt AES-GCM và bộ đóng gói mã hóa lai]
 
 Mã nguồn mô-đun `algorithms/aes_gcm.py` và `algorithms/hybrid_pgp.py`:
 
@@ -104,6 +133,8 @@ def aes_gcm_encrypt(session_key, plaintext_bytes):
     return ciphertext, nonce, auth_tag
 
 def aes_gcm_decrypt(session_key, nonce_bytes, ciphertext_bytes, auth_tag_bytes):
+    if len(nonce_bytes) != 12:
+        raise ValueError(f"Nonce AES-GCM chuẩn phải dài 12 bytes (nhận được {len(nonce_bytes)} bytes).")
     cipher = AES.new(session_key, AES.MODE_GCM, nonce=nonce_bytes)
     return cipher.decrypt_and_verify(ciphertext_bytes, auth_tag_bytes)
 
@@ -136,7 +167,7 @@ def bob_decrypt_package(package, bob_priv_key):
     return plaintext_bytes.decode("utf-8")
 ```
 
-#heading(level: 2, numbering: none, outlined: true)[Phụ lục C: Cài đặt truyền thông Socket TCP giữa 2 máy mạng LAN]
+#heading(level: 2, numbering: none, outlined: true)[Phụ lục D: Cài đặt truyền thông Socket TCP giữa 2 máy mạng LAN]
 
 Cơ chế đóng khung 4 byte độ dài giải quyết phân mảnh byte stream trong `PGP_RSA_AES_Socket_3_files/server_bob.py`:
 

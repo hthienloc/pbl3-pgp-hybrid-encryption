@@ -21,7 +21,8 @@
 
   set document(title: main-title + " - " + sub-title, author: author-str)
   set text(lang: language, font: body-font, size: 13pt)
-  set par(justify: true, leading: 0.65em, spacing: 1.2em, first-line-indent: 0em)
+  set par(justify: true, leading: 0.65em, spacing: 1.0em, first-line-indent: (amount: 1cm, all: true))
+  set math.equation(numbering: "(1)")
 
   // 1. TRANG BÌA (CHUẨN BÌA ĐẠI HỌC VIỆT NAM – KHUNG VIỀN ĐÔI & LOGO)
   {
@@ -137,25 +138,29 @@
 
   pagebreak()
 
-  // 2. CẤU HÌNH TRANG NỘI DUNG & HEADER
+  // 2. CẤU HÌNH TRANG NỘI DUNG, HEADER & FOOTER (SỐ TRANG Ở GIỮA CHÂN TRANG)
   set page(
     paper: "a4",
     margin: page-margin,
     header: context {
       grid(
-        columns: (1fr, 1fr),
-        align: (left, right),
+        columns: (1fr,),
+        align: left,
         row-gutter: 0.5em,
-        text(font: heading-font, size: 9pt,
+        text(font: heading-font, size: 9.5pt, fill: rgb("#475569"),
           context { hydra(1, use-last: false, skip-starting: false) }
         ),
-        text(font: heading-font, size: 9pt, number-type: "lining",
-          context { counter(page).display("1") }
-        ),
-        grid.cell(colspan: 2, line(length: 100%, stroke: 0.5pt + rgb("#cbd5e1"))),
+        line(length: 100%, stroke: 0.5pt + rgb("#cbd5e1")),
       )
     },
     header-ascent: 1.5em,
+    footer: context {
+      align(center)[
+        #text(font: heading-font, size: 10.5pt, number-type: "lining")[
+          #counter(page).display("1")
+        ]
+      ]
+    },
   )
 
   // Định dạng tiêu đề

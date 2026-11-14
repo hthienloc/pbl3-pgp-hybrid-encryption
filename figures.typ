@@ -240,16 +240,16 @@
     }
     ```,
     labels: (
-      "f_len": align(center)[*4 Bytes (!I)*\ *Độ dài JSON*\ #text(size: 7.5pt)[Tiền tố Big-Endian]],
-      "f_key": align(center)[*`enc_session_key`*\ *Khóa RSA* $C_("key")$\ #text(size: 7.5pt)[Số nguyên / Hex]],
-      "f_nonce": align(center)[*`nonce` (12B)*\ *Nonce / IV*\ #text(size: 7.5pt)[Base64 / Hex]],
-      "f_data": align(center)[*`ciphertext`*\ *Bản mã* $C_("data")$\ #text(size: 7.5pt)[Base64 / Hex]],
-      "f_tag": align(center)[*`auth_tag` (16B)*\ *Auth Tag*\ #text(size: 7.5pt)[Base64 / Hex]],
-      "p_len": align(center)[*1. Đọc khung*\ `recv_exact(4)`\ #text(size: 7.5pt)[Tách JSON]],
-      "p_key": align(center)[*2. Giải mã RSA*\ `rsa_decrypt()`\ #text(size: 7.5pt)[Lấy khóa $K$]],
-      "p_nonce": align(center)[*3. Nạp IV*\ `AES.new(K, ...)`\ #text(size: 7.5pt)[Nạp nonce]],
-      "p_data": align(center)[*4. Giải mã AES*\ `decrypt()`\ #text(size: 7.5pt)[Khôi phục $M$]],
-      "p_tag": align(center)[*5. Kiểm thực*\ `verify(tag)`\ #text(size: 7.5pt)[Chống giả mạo]],
+      "f_len": align(center)[*4 Bytes (Big-Endian)*\ *Độ dài gói*\ #text(size: 7.5pt)[Tiền tố độ dài]],
+      "f_key": align(center)[*Khóa phiên mã hóa*\ $C_("key")$\ #text(size: 7.5pt)[Mã hóa RSA]],
+      "f_nonce": align(center)[*Vector khởi tạo*\ *Nonce / IV (12B)*\ #text(size: 7.5pt)[Dùng một lần]],
+      "f_data": align(center)[*Bản mã dữ liệu*\ $C_("data")$\ #text(size: 7.5pt)[Mã hóa AES-CTR]],
+      "f_tag": align(center)[*Thẻ xác thực*\ *Auth Tag (16B)*\ #text(size: 7.5pt)[Hàm băm GHASH]],
+      "p_len": align(center)[*1. Đọc khung*\ Đọc đủ độ dài\ #text(size: 7.5pt)[Tách gói JSON]],
+      "p_key": align(center)[*2. Giải mã RSA*\ Khôi phục khóa $K'$\ #text(size: 7.5pt)[Dùng khóa bí mật]],
+      "p_nonce": align(center)[*3. Khởi tạo bộ đếm*\ Nạp Nonce / IV\ #text(size: 7.5pt)[Tạo $J_0$ và $"CB"_i$]],
+      "p_data": align(center)[*4. Giải mã AES*\ Giải mã dòng CTR\ #text(size: 7.5pt)[Khôi phục $M'$]],
+      "p_tag": align(center)[*5. Kiểm tra Tag*\ Đối chiếu GHASH\ #text(size: 7.5pt)[Chống sửa đổi]],
     ),
     width: 98%,
   ),
@@ -269,11 +269,11 @@
       #align(left)[
         *0. Khởi tạo Server:*\
         Sinh khóa RSA $(e_B, n), (d_B, n)$\
-        `listen(0.0.0.0:5000)`
+        Lắng nghe tại cổng 5000
       ]
     ]
 
-    _seq("A", "B", comment: [1. Yêu cầu khóa: `{"action": "GET_PUBLIC_KEY"}`])
+    _seq("A", "B", comment: [1. Yêu cầu lấy khóa công khai])
     _seq("B", "A", comment: [2. Trả Public Key $(e_B, n)$], dashed: true)
 
     _note("across", shape: "rect", color: luma(248))[
@@ -300,7 +300,81 @@
       ]
     ]
 
-    _seq("B", "A", comment: [7. Phản hồi kết quả: `{"status": "OK" | "ERROR"}`], dashed: true)
+    _seq("B", "A", comment: [7. Phản hồi kết quả xác thực (Hợp lệ / Lỗi)], dashed: true)
   }),
-  caption: [Sơ đồ tuần tự mô phỏng PGP Hybrid qua Socket TCP giữa máy Alice và máy Bob],
+  caption: [Sơ đồ tuần tự mô phỏng mã hóa lai qua Socket TCP giữa máy Alice và máy Bob],
+)
+
+// --- LƯU ĐỒ THUẬT TOÁN AES-128 (SPN) ---
+#let fig-aes-spn-flow = figure(
+  raw-render(
+    ```dot
+    digraph {
+      rankdir=TB;
+      nodesep=0.25;
+      ranksep=0.3;
+      node [shape=box, style="rounded,filled", fillcolor="white", penwidth=0.8, margin="0.1,0.06"];
+      edge [penwidth=0.8, arrowsize=0.7, color="black"];
+
+      in_blk -> init_key -> r_sub -> r_shift -> r_mix -> r_add -> cond;
+      cond -> r_sub [label=" Vòng 1..9"];
+      cond -> f_sub [label=" Vòng 10 (cuối)"];
+      f_sub -> f_shift -> f_add -> out_blk;
+    }
+    ```,
+    labels: (
+      "in_blk": align(center)[*Khối bản rõ 128-bit* (Ma trận trạng thái $4 times 4$ byte)],
+      "init_key": align(center)[*Khởi tạo vòng 0:* Cộng khóa vòng (`AddRoundKey`)],
+      "r_sub": align(center)[*Thế phi tuyến (`SubBytes`):* Tra bảng S-box 8-bit],
+      "r_shift": align(center)[*Dịch hàng (`ShiftRows`):* Dịch vòng 4 hàng của ma trận],
+      "r_mix": align(center)[*Trộn cột (`MixColumns`):* Nhân ma trận trên $"GF"(2^8)$],
+      "r_add": align(center)[*Cộng khóa vòng (`AddRoundKey`):* Phép XOR với khóa vòng $K_r$],
+      "cond": align(center)[*Kiểm tra số vòng* ($r < 10$?)],
+      "f_sub": align(center)[*Vòng cuối (`SubBytes`)*],
+      "f_shift": align(center)[*Vòng cuối (`ShiftRows`)* (Bỏ qua `MixColumns`)],
+      "f_add": align(center)[*Vòng cuối (`AddRoundKey`)* với khóa $K_(10)$],
+      "out_blk": align(center)[*Khối bản mã 128-bit*],
+    ),
+    width: 68%,
+  ),
+  caption: [Lưu đồ thuật toán mã hóa khối AES-128 theo cấu trúc mạng thay thế – hoán vị (SPN)],
+)
+
+// --- LƯU ĐỒ CHẾ ĐỘ XÁC THỰC AES-GCM ---
+#let fig-aes-gcm-flow = figure(
+  raw-render(
+    ```dot
+    digraph {
+      rankdir=TB;
+      nodesep=0.25;
+      ranksep=0.32;
+      node [shape=box, style="rounded,filled", fillcolor="white", penwidth=0.8, margin="0.1,0.06"];
+      edge [penwidth=0.8, arrowsize=0.7, color="black"];
+
+      { rank=same; cb_init; h_gen; }
+      cb_init -> cb_inc -> aes_ctr -> xor_p -> c_out;
+      p_in -> xor_p;
+      c_out -> ghash_mul;
+      h_gen -> ghash_mul;
+      ghash_mul -> len_blk -> tag_xor -> tag_out;
+      cb_init -> aes_j0 -> tag_xor;
+    }
+    ```,
+    labels: (
+      "cb_init": align(center)[*Khối đếm đầu* $J_0 = "Nonce" || 1$],
+      "h_gen": align(center)[*Khóa băm* $H = "AES"_K (0^(128))$],
+      "cb_inc": align(center)[*Tăng bộ đếm* $"CB"_i = "inc"_(32)("CB"_(i-1))$],
+      "aes_ctr": align(center)[*Mã hóa khối* $"AES"_K ("CB"_i)$],
+      "p_in": align(center)[*Khối bản rõ* $P_i$],
+      "xor_p": align(center)[*Phép XOR:* $C_i = P_i xor "AES"_K ("CB"_i)$],
+      "c_out": align(center)[*Khối bản mã* $C_i$],
+      "ghash_mul": align(center)[*Hàm băm GHASH:* $X_i = (X_(i-1) xor C_i) dot H$ trên $"GF"(2^(128))$],
+      "len_blk": align(center)[*Nhân khối độ dài:* $(X_m xor ("len"_(64)(A) || "len"_(64)(C))) dot H$],
+      "aes_j0": align(center)[*Mã hóa* $"AES"_K (J_0)$],
+      "tag_xor": align(center)[*XOR tạo thẻ:* $"GHASH" xor "AES"_K (J_0)$],
+      "tag_out": align(center)[*Thẻ xác thực (Tag 128-bit)*],
+    ),
+    width: 92%,
+  ),
+  caption: [Lưu đồ nguyên lý mã hóa dòng CTR và xác thực toàn vẹn GHASH trong chế độ AES-GCM],
 )

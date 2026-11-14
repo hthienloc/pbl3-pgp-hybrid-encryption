@@ -1,24 +1,24 @@
-#import "../figures.typ": fig-sequence-interaction, fig-packet-layout
+#import "../figures.typ": fig-sequence-interaction, fig-packet-layout, fig-aes-spn-flow, fig-aes-gcm-flow
 #import "../styles.typ": report-table
 
 = Phương pháp thực hiện
 
-== Quy trình Hybrid Encryption tổng thể
-Luồng truyền thông giữa Alice (gửi) và Bob (nhận) gồm 5 giai đoạn tuần tự như mô tả trong @tbl-hybrid-process và sơ đồ tương tác ở @fig-sequence-interaction.
+== Quy trình mã hóa lai và phân vai thuật toán
+Trong kiến trúc truyền thông giữa Alice (bên gửi) và Bob (bên nhận), mỗi lớp mật mã đảm nhiệm một vai trò độc lập: RSA giải quyết bài toán trao đổi khóa qua kênh mạng không tin cậy, còn AES-GCM bảo vệ nội dung thông điệp và chống sửa đổi dữ liệu. Quy trình năm giai đoạn được tóm tắt trong @tbl-hybrid-process và minh họa tuần tự tại @fig-sequence-interaction.
 
 #figure(
   report-table(
-    columns: (1fr, 1.8fr, 1.8fr),
+    columns: (1.0fr, 1.8fr, 1.8fr),
     headers: ("Giai đoạn", "Phía Alice (Người gửi)", "Phía Bob (Người nhận)"),
     rows: (
-      ([GĐ 0: Khởi tạo danh tính], [Nhận khóa công khai $(e, n)$ của Bob qua mạng hoặc tệp cấu hình.], [Sinh cặp khóa RSA $(e, n)$ và $(d, n)$; công khai $(e, n)$.]),
-      ([GĐ 1: Sinh khóa phiên $K$], [Dùng CSPRNG (`os.urandom`) sinh khóa phiên $K$ (16 bytes = 128-bit).], [Chờ gói tin từ phía gửi qua socket mạng.]),
-      ([GĐ 2: Mã hóa dữ liệu & khóa], [- AES-GCM mã hóa $M$ bằng $K$ $arrow.r$ `ciphertext`, `nonce`, `auth_tag`. \ - RSA mã hóa $K$ bằng $(e, n)$ $arrow.r$ `enc_session_key`.], [Không thực hiện.]),
-      ([GĐ 3: Đóng gói & Truyền tải], [Đóng gói JSON Envelope 4 trường mật mã, thêm tiền tố 4-byte độ dài gửi qua TCP.], [Đọc 4-byte độ dài, nhận đủ gói JSON Envelope vào bộ nhớ đệm.]),
-      ([GĐ 4: Giải mã & Kiểm thực], [Chờ phản hồi kết quả từ máy nhận.], [- Dùng $d$ giải RSA: $K' = (C_"key")^d mod n$. \ - Kiểm thực `auth_tag` qua GHASH; khớp thì giải mã ra $M'$.]),
+      ([GĐ 0: Khởi tạo khóa], [Nhận khóa công khai $(e, n)$ của Bob và đối chiếu dấu vân tay SHA-256.], [Sinh cặp khóa RSA gồm khóa công khai $(e, n)$ và khóa bí mật $(d, n)$.]),
+      ([GĐ 1: Sinh khóa phiên], [Dùng bộ sinh số ngẫu nhiên an toàn tạo khóa phiên $K$ dài 128 bit (16 byte).], [Mở cổng mạng chờ nhận kết nối từ phía gửi.]),
+      ([GĐ 2: Mã hóa hai lớp], [- Dùng AES-GCM mã hóa $M$ bằng $K$ tạo bản mã dữ liệu, vector khởi tạo và thẻ xác thực. \ - Dùng RSA mã hóa $K$ bằng $(e, n)$ tạo bản mã khóa phiên.], [Không thực hiện.]),
+      ([GĐ 3: Đóng gói & Gửi], [Đóng gói bốn thành phần vào cấu trúc JSON kèm tiền tố 4 byte độ dài và gửi qua TCP.], [Đọc 4 byte độ dài rồi nhận trọn vẹn phần thân gói tin vào bộ nhớ đệm.]),
+      ([GĐ 4: Giải mã & Kiểm tra], [Chờ phản hồi trạng thái xử lý từ bên nhận.], [- Dùng khóa bí mật $d$ giải mã RSA khôi phục khóa phiên $K'$. \ - Tính lại thẻ xác thực bằng GHASH; nếu khớp mới giải mã ra bản rõ $M'$.]),
     ),
   ),
-  caption: [Quy trình thực hiện mã hóa lai giữa phía gửi (Alice) và phía nhận (Bob).],
+  caption: [Quy trình thực hiện mã hóa lai giữa Alice và Bob],
 ) <tbl-hybrid-process>
 
 #v(0.3em)
@@ -27,57 +27,85 @@ Luồng truyền thông giữa Alice (gửi) và Bob (nhận) gồm 5 giai đo�
 ]
 #v(0.3em)
 
-== Cơ sở số học của thuật toán RSA
-Thuật toán RSA số học thuần túy gồm các bước thực hiện sau:
-+ Sinh hai số nguyên tố $p, q$ (128-bit cho RSA-256 ở demo thuật toán; 256-bit cho RSA-512 ở giao tiếp Socket) bằng phép kiểm tra xác suất Miller-Rabin @rabin1980 với $k = 20$ vòng lặp trong `algorithms/rsa.py`. Khi đó, xác suất hợp số lọt qua nhỏ hơn $(1/4)^(20) approx 9.09 times 10^(-13)$.
-+ Tính modulus $n = p dot q$ (256 hoặc 512 bit) và giá trị hàm Euler $phi(n) = (p - 1)(q - 1)$.
-+ Chọn số mũ công khai Fermat $e = 65537 = 2^(16) + 1$ ($F_4$, dạng nhị phân $10000000000000001_2$ chỉ có 2 bit 1), nhờ vậy phép lũy thừa mô-đun chỉ cần 16 phép bình phương và 1 phép nhân.
-+ Tìm khóa bí mật $d$ thỏa mãn $e dot d equiv 1 (mod phi(n))$ bằng thuật toán Euclid mở rộng, tương đương giải phương trình Bézout $e dot d + phi(n) dot y = 1$ với độ phức tạp $O(log(phi(n)))$.
+== Cơ sở toán học và kích thước khóa của RSA
+Hệ mật RSA sử dụng trong đề tài thực hiện phép tính số học trên số nguyên lớn theo bốn bước:
++ *Sinh số nguyên tố xác suất Miller–Rabin:* Hai số nguyên tố phân biệt $p$ và $q$ được kiểm tra bằng giải thuật Miller–Rabin @rabin1980 với $k = 20$ vòng lặp ngẫu nhiên, cho xác suất nhầm hợp số nhỏ hơn $(1/4)^(20) approx 9.09 times 10^(-13)$.
++ *Tính modulus $n$ và hàm Euler:* Modulus hệ thống được tính theo @eq-rsa-modulus và hàm phi Euler theo @eq-rsa-phi:
+  $ n = p dot q $ <eq-rsa-modulus>
+  $ phi(n) = (p - 1)(q - 1) $ <eq-rsa-phi>
++ *Chọn số mũ công khai Fermat:* Chọn cố định $e = 65537 = 2^(16) + 1$ vì biểu diễn nhị phân $10000000000000001_2$ chỉ có hai bit 1, giúp phép bình phương và nhân liên tiếp chỉ cần 16 phép bình phương và 1 phép nhân theo mô-đun.
++ *Tìm khóa bí mật bằng giải thuật Euclid mở rộng:* Giải phương trình đồng dư ở @eq-rsa-inverse để tìm $d$ trong thời gian $O(log(phi(n)))$:
+  $ e dot d equiv 1 (mod phi(n)) $ <eq-rsa-inverse>
 
-*Chứng minh tính đúng đắn dựa trên Định lý Euler:* \
-Phía Bob tính:
-$ K' = (C_"key")^d mod n = ((K^e) mod n)^d mod n = K^(e dot d) mod n $
-Vì $e dot d equiv 1 (mod phi(n))$, tồn tại $k in ZZ$ sao cho $e dot d = 1 + k dot phi(n)$. Khi $gcd(K, n) = 1$, theo Định lý Euler $K^(phi(n)) equiv 1 (mod n)$:
-$ K' equiv K^(1 + k dot phi(n)) equiv K dot (K^(phi(n)))^k equiv K dot 1^k equiv K (mod n) $
-Nếu $gcd(K, n) != 1$ ($K$ là bội của $p$ hoặc $q$), kết hợp Định lý Fermat nhỏ trên $p, q$ và Định lý Số dư Trung Hoa (CRT) vẫn cho $K^(e dot d) equiv K (mod p)$ và $K^(e dot d) equiv K (mod q)$, suy ra $K^(e dot d) equiv K (mod n)$. Do $K$ (128-bit) thỏa $K < 2^(128) < n$, giá trị $K'$ trùng khớp với $K$ ban đầu.
+Cần phân biệt rạch ròi ý nghĩa số bit của từng đại lượng trong hệ thống:
+- Với bản mô phỏng thuật toán trên giao diện web và kiểm thử nhanh, từng số nguyên tố $p, q$ dài 128 bit nên modulus $n = p dot q$ dài 256 bit. Cấu hình này giúp các con số trung gian đủ gọn để quan sát trực tiếp từng bước biến đổi số học.
+- Với mô hình truyền thông Socket qua mạng LAN, từng số nguyên tố $p, q$ dài 256 bit nên modulus $n$ dài 512 bit nhằm tăng biên độ an toàn cho khóa công khai truyền qua mạng mà vẫn bảo đảm thời gian sinh khóa nhanh.
+- Trong cả hai cấu hình, khóa phiên AES gốc $K$ luôn có kích thước cố định 128 bit ($K < 2^(128) < n$), còn bản mã khóa phiên $C_"key"$ sau khi mã hóa RSA có kích thước bằng kích thước modulus $n$ (256 bit hoặc 512 bit).
 
-== Cơ chế mã hóa xác thực AES-GCM (AEAD)
-Theo chuẩn NIST SP 800-38D @nist_sp800_38d, AES-GCM kết hợp cả hai quá trình mã hóa và xác thực:
+Quá trình mã hóa và giải mã RSA tại @eq-rsa-enc và @eq-rsa-dec thỏa mãn tính đúng đắn nhờ Định lý Euler:
+$ C_"key" = K^e mod n $ <eq-rsa-enc>
+$ K' = (C_"key")^d mod n = K^(e dot d) mod n $ <eq-rsa-dec>
 
-Đối với mã hóa dòng Counter Mode (CTR), với Nonce 96-bit (12 bytes), khối đếm ban đầu là $J_0 = "CB"_0 = "Nonce" || "00000001"_(16)$. Bản rõ $M$ được chia thành các khối 16 bytes $P_1, P_2, dots, P_m$; các khối đếm tăng dần qua phép tăng 32-bit cuối $"CB"_i = "inc"_(32)("CB"_(i-1))$ ($i >= 1$, tức $"CB"_1 = "Nonce" || "00000002"_(16)$, $"CB"_2 = "Nonce" || "00000003"_(16)$, ...). Bản mã được tính theo công thức:
-$ C_i = P_i xor "AES"_K ("CB"_i) $
-Cách tính này không cần padding và có thể xử lý song song từng khối.
+Vì $e dot d = 1 + k dot phi(n)$, khi $gcd(K, n) = 1$ thì $K^(phi(n)) equiv 1 (mod n)$, nên $K' equiv K dot 1^k equiv K (mod n)$. Trường hợp hiếm gặp $gcd(K, n) != 1$ ($K$ chia hết cho $p$ hoặc $q$), kết hợp Định lý Fermat nhỏ trên từng thừa số $p, q$ và Định lý Số dư Trung Hoa (CRT) vẫn bảo đảm $K^(e dot d) equiv K (mod n)$.
 
-Để xác thực toàn vẹn bằng GHASH, hệ thống tạo khóa băm $H = "AES"_K (0^(128))$. Phép nhân trên trường hữu hạn $"GF"(2^(128))$ sử dụng đa thức bất khả quy:
-$ f(x) = x^(128) + x^7 + x^2 + x + 1 $
-Khối bản mã cuối $C_m$ nếu chưa đủ 128 bit sẽ được đệm bit 0 về bên phải. Giá trị băm tích lũy là $X_i = (X_(i-1) xor C_i) dot H$ ($X_0 = 0^(128)$). Cuối cùng, GHASH nhân thêm khối 128-bit chứa độ dài bit của dữ liệu bổ sung $A$ và bản mã $C$ ($"len"_(64)(A) || "len"_(64)(C)$, với $A = emptyset$), rồi XOR với $"AES"_K ("CB"_0)$ để tạo Authentication Tag:
-$ "Tag" = ((X_m xor ("len"_(64)(A) || "len"_(64)(C))) dot H) xor "AES"_K ("CB"_0) $
+== Lý thuyết và lưu đồ thuật toán mã hóa khối AES-128
+AES là thuật toán mã hóa khối đối xứng hoạt động trên từng khối dữ liệu 128 bit (16 byte), được tổ chức thành ma trận trạng thái kích thước $4 times 4$ byte. Với khóa phiên $K$ dài 128 bit, dữ liệu đi qua bước cộng khóa khởi tạo và 10 vòng biến đổi theo cấu trúc mạng thay thế – hoán vị (SPN) như trình bày trong @fig-aes-spn-flow.
 
-Nhờ tính khuếch tán trên $"GF"(2^(128))$, chỉ cần 1 bit trong bản mã bị thay đổi thì giá trị GHASH tính lại tại Bob sẽ sai lệch. Khi `"Tag"_"computed" != "Tag"_"received"`, hệ thống ném ngoại lệ `ValueError: MAC check failed` và hủy gói tin ngay ở bước giải mã.
+#v(0.3em)
+#align(center)[
+  #fig-aes-spn-flow <fig-aes-spn-flow>
+]
+#v(0.3em)
 
-== Đóng gói khung truyền thông mạng và giao thức Socket TCP
-Do TCP truyền dữ liệu dưới dạng luồng byte liên tục và không giữ ranh giới thông điệp, các gói tin gửi đi dễ gặp tình trạng phân mảnh hoặc dính gói. Để xử lý, hệ thống áp dụng cơ chế đóng khung tiền tố độ dài (Length-Prefixed Framing): mỗi gói tin đều gắn tiền tố 4-byte số nguyên không dấu Big-Endian (`!I`) biểu thị kích thước payload JSON UTF-8 đi kèm, đồng thời phía nhận kiểm tra giới hạn kích thước tối đa để tránh tràn bộ nhớ.
+Mỗi vòng biến đổi của AES thực hiện bốn phép toán đại số cơ bản sau:
+- *Thế phi tuyến (`SubBytes`):* Thay thế từng byte trong ma trận trạng thái bằng một byte tương ứng trong bảng thế S-box cố định nhằm tạo tính phi tuyến, chống lại phân tích mật mã tuyến tính và vi sai.
+- *Dịch hàng (`ShiftRows`):* Dịch vòng sang trái từng hàng của ma trận trạng thái (hàng 0 giữ nguyên, hàng 1 dịch 1 byte, hàng 2 dịch 2 byte, hàng 3 dịch 3 byte) để khuếch tán dữ liệu theo chiều ngang.
+- *Trộn cột (`MixColumns`):* Nhân từng cột của ma trận trạng thái với một đa thức cố định trên trường hữu hạn $"GF"(2^8)$ nhằm trộn đều ảnh hưởng của từng byte trên toàn cột (phép toán này được bỏ qua ở vòng cuối thứ 10).
+- *Cộng khóa vòng (`AddRoundKey`):* Thực hiện phép cộng loại trừ theo từng bit (XOR) giữa ma trận trạng thái hiện tại với khóa vòng $K_r$ sinh ra từ thuật toán mở rộng khóa.
 
-Cấu trúc JSON Envelope được mô tả trong @tbl-packet-fields. Ở tầng Socket (`PGP_RSA_AES_Socket_3_files/`), `enc_session_key` truyền dưới dạng số nguyên lớn (hoặc chuỗi hex ở CLI demo), còn `nonce`, `ciphertext`, `auth_tag` được mã hóa Base64 (gói tin gửi lên server có thêm `"action": "SEND_MESSAGE"`).
+== Chế độ mã hóa xác thực AES-GCM (AEAD)
+AES-GCM thuộc họ mật mã xác thực có dữ liệu bổ sung AEAD (*Authenticated Encryption with Associated Data*), cho phép bảo vệ đồng thời tính bí mật của bản rõ và tính toàn vẹn của cả bản mã lẫn dữ liệu đi kèm (nếu có). Lưu đồ nguyên lý của AES-GCM theo chuẩn NIST SP 800-38D @nist_sp800_38d được thể hiện trong @fig-aes-gcm-flow.
+
+#v(0.3em)
+#align(center)[
+  #fig-aes-gcm-flow <fig-aes-gcm-flow>
+]
+#v(0.3em)
+
+Với vector khởi tạo Nonce dài 96 bit (12 byte), khối đếm ban đầu $J_0$ được tạo theo @eq-gcm-j0 và các khối đếm mã hóa tiếp theo tăng dần 32 bit cuối theo @eq-gcm-cbi:
+$ J_0 = "CB"_0 = "Nonce" || "00000001"_(16) $ <eq-gcm-j0>
+$ "CB"_i = "inc"_(32)("CB"_(i-1)) = "Nonce" || (i + 1)_(32) quad (i >= 1) $ <eq-gcm-cbi>
+
+Bản rõ $M$ được chia thành các khối 128 bit $P_1, P_2, dots, P_m$ và mã hóa dòng theo chế độ bộ đếm (CTR) bằng @eq-gcm-ctr, loại bỏ nhu cầu đệm khối dữ liệu:
+$ C_i = P_i xor "AES"_K ("CB"_i) $ <eq-gcm-ctr>
+
+Song song với quá trình tạo bản mã, hàm băm GHASH tạo khóa băm $H = "AES"_K (0^(128))$ và thực hiện phép nhân tích lũy trên trường Galois $"GF"(2^(128))$ theo đa thức bất khả quy ở @eq-gcm-poly:
+$ f(x) = x^(128) + x^7 + x^2 + x + 1 $ <eq-gcm-poly>
+
+Nếu khối bản mã cuối $C_m$ chưa đủ 128 bit, hệ thống đệm thêm các bit 0 về bên phải. Giá trị băm tích lũy qua từng khối là $X_i = (X_(i-1) xor C_i) dot H$ với $X_0 = 0^(128)$. Cuối cùng, khối độ dài 128 bit chứa độ dài tính theo bit của dữ liệu bổ sung $A$ (rỗng trong hệ thống này) và bản mã $C$ được nhân thêm để tạo thẻ xác thực 128-bit tại @eq-gcm-tag:
+$ "Tag" = ((X_m xor ("len"_(64)(A) || "len"_(64)(C))) dot H) xor "AES"_K (J_0) $ <eq-gcm-tag>
+
+Nhờ tính khuếch tán trên trường $"GF"(2^(128))$, chỉ cần 1 bit trong bản mã bị thay đổi trên đường truyền, thẻ xác thực tính lại tại bên nhận sẽ khác hoàn toàn với thẻ xác thực nhận được. Khi phát hiện sai lệch, bên nhận lập tức báo lỗi kiểm tra toàn vẹn và hủy gói tin thay vì giải mã ra dữ liệu sai.
+
+== Đóng gói khung truyền thông Socket TCP và xác thực dấu vân tay
+Giao thức TCP truyền dữ liệu theo luồng byte liên tục nên có thể xảy ra hiện tượng phân mảnh hoặc dính gói. Để phân tách ranh giới từng bức điện, bên gửi gắn tiền tố 4 byte số nguyên không dấu theo thứ tự byte mạng (Big-Endian) quy định kích thước chính xác của gói JSON đi kèm. Bốn thành phần mật mã trong gói tin được mô tả tại @tbl-packet-fields và quy trình phân tích tại bên nhận thể hiện trong @fig-packet-layout.
 
 #figure(
   report-table(
-    columns: (1.1fr, 1.1fr, 1.1fr, 1.8fr),
-    headers: ("Tên trường JSON", "Kích thước gốc", "Định dạng truyền tải", "Mô tả vai trò mật mã"),
+    columns: (1.2fr, 1.1fr, 1.1fr, 1.7fr),
+    headers: ("Thành phần", "Kích thước gốc", "Biểu diễn truyền tải", "Vai trò mật mã"),
     rows: (
-      ([`enc_session_key`], [256 / 512 bit], [Số nguyên lớn / Hex], [Khóa phiên $K$ (128-bit) đã mã hóa bằng khóa công khai của Bob qua RSA.]),
-      ([`nonce`], [12 bytes (96 bit)], [Base64 / Hex], [Vector khởi tạo ngẫu nhiên dùng một lần cho AES-GCM.]),
-      ([`ciphertext`], [Biến thiên ($|M|$ bytes)], [Base64 / Hex], [Bản mã của $M$ sinh bởi AES CTR Mode.]),
-      ([`auth_tag`], [16 bytes (128 bit)], [Base64 / Hex], [Mã xác thực sinh bởi hàm băm GHASH trên $"GF"(2^(128))$.]),
+      ([Khóa phiên mã hóa], [256 hoặc 512 bit], [Số nguyên / Hex], [Khóa phiên 128-bit đã mã hóa bằng khóa công khai của Bob qua RSA.]),
+      ([Vector khởi tạo], [12 byte (96 bit)], [Base64 / Hex], [Giá trị ngẫu nhiên dùng một lần cho chế độ AES-GCM.]),
+      ([Bản mã dữ liệu], [Bằng độ dài $M$], [Base64 / Hex], [Nội dung thông điệp $M$ đã mã hóa đối xứng bằng AES-CTR.]),
+      ([Thẻ xác thực], [16 byte (128 bit)], [Base64 / Hex], [Mã kiểm tra toàn vẹn sinh bởi hàm băm GHASH.]),
     ),
   ),
-  caption: [Cấu trúc trường dữ liệu của gói tin PGP Hybrid qua mạng.],
+  caption: [Cấu trúc bốn thành phần mật mã trong gói tin truyền qua mạng],
 ) <tbl-packet-fields>
 
-Để phòng tránh tấn công kẻ đứng giữa (Man-in-the-Middle) giả mạo khóa công khai, hệ thống tạo dấu vân tay SHA-256 (64 ký tự hex) cho khóa công khai của Bob để hai bên đối chiếu trước khi gửi:
-$ "fingerprint"("pub_key") = "SHA256"("RSA:" || e || ":" || n) $
-
-Quy cách đóng gói khung và luồng phân tích cú pháp tại Bob được minh họa trong @fig-packet-layout.
+Để phòng ngừa tấn công giả mạo khóa công khai (tấn công kẻ đứng giữa), hệ thống tính dấu vân tay số dài 64 ký tự thập lục phân theo hàm băm SHA-256 ở @eq-fingerprint để Alice và Bob đối chiếu qua kênh ngoài trước khi truyền tin:
+$ "fingerprint"("khóa công khai") = "SHA256"("RSA:" || e || ":" || n) $ <eq-fingerprint>
 
 #v(0.3em)
 #align(center)[
