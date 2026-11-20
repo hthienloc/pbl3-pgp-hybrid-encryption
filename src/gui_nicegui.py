@@ -923,7 +923,7 @@ def page_integrated():
 @ui.page("/algorithms")
 def page_algorithms():
     setup_page_head()
-    ui.query("body").style("padding-bottom: 5rem;")
+    ui.query("body").style("padding-bottom: 3rem;")
     render_header("algorithms")
 
     alg_data = {
@@ -936,7 +936,239 @@ def page_algorithms():
         "tag": None,
         "c_key": None,
         "recovered_k": None,
+        "decrypted_msg": None,
+        "error_msg": None,
+        "active_stage": 1,
+        "active_subnode": "rsa_pq",
+        "stage_status": {1: "waiting", 2: "waiting", 3: "waiting", 4: "waiting", 5: "waiting"},
+        "stage_details": {
+            1: ("• n: 512 bits | p, q: 256 bits\n• e = 65537 | Miller-Rabin: k = 20", "Nhấn 'Chạy' để sinh cặp khóa RSA-512...", "Chưa có khóa..."),
+            2: ("• Thông điệp M (UTF-8)\n• Khóa phiên K (128-bit): —", "Nhấn 'Chạy' để sinh K và mã hóa AES-GCM...", "Chưa có kết quả..."),
+            3: ("• K (16B): (chưa có)\n• Public Key (e, n): (chưa có)", "Chờ nhận K từ Khối 2...", "Chưa có kết quả..."),
+            4: ("• C_key: (chưa có)\n• Private Key (d, n): (chưa có)", "Chờ nhận C_key từ Khối 3...", "Chưa có kết quả..."),
+            5: ("• K': (chưa có)\n• IV, C_data, Tag: (lấy từ Khối 2)", "Chờ nhận K' từ Khối 4...", "Chờ thực thi..."),
+        },
     }
+
+    STAGE_META = {
+        1: {"num": "1", "title": "Sinh khóa RSA-512", "sub": "Bob • p, q, n, e, d", "color": "teal", "col_titles": ("THAM SỐ", "XỬ LÝ SỐ HỌC", "OUTPUT (e, n, d)")},
+        2: {"num": "2", "title": "Mã hóa AES-128-GCM", "sub": "Alice • K, IV, C_data, Tag", "color": "blue", "col_titles": ("INPUT (M, K)", "XỬ LÝ CTR & GHASH", "OUTPUT (IV, C_data, Tag)")},
+        3: {"num": "3", "title": "Mã hóa RSA (K → C_key)", "sub": "Alice • K^e mod n", "color": "indigo", "col_titles": ("INPUT (K, e, n)", "XỬ LÝ SỐ HỌC", "OUTPUT (C_key)")},
+        4: {"num": "4", "title": "Giải mã RSA (C_key → K')", "sub": "Bob • (C_key)^d mod n", "color": "cyan", "col_titles": ("INPUT (C_key, d, n)", "XỬ LÝ (ĐỊNH LÝ EULER)", "OUTPUT (K')")},
+        5: {"num": "5", "title": "Giải mã & GHASH (M')", "sub": "Bob • Verify Tag & CTR", "color": "emerald", "col_titles": ("INPUT (K', IV, C_data, Tag)", "KIỂM THỰC GHASH & CTR", "OUTPUT (M')")},
+    }
+
+    SUBNODE_INFO = {
+        # RSA sub-nodes
+        "rsa_pq": ("p, q (256-bit)", "Sinh hai số nguyên tố ngẫu nhiên 256-bit bằng kiểm tra xác suất Miller-Rabin (k=20)."),
+        "rsa_n_phi": ("n, φ(n)", "Tính modulus n = p·q (512-bit) làm không gian số học và hàm Euler φ(n) = (p-1)(q-1)."),
+        "rsa_ed": ("e = 65537, d", "Chọn số mũ công khai e = 65537 và tìm khóa bí mật d = e⁻¹ mod φ(n) bằng Euclid mở rộng."),
+        "rsa_enc": ("C_key = K^e mod n", "Mã hóa khóa phiên K (128-bit < n) bằng lũy thừa module nhanh Square-and-Multiply."),
+        "rsa_dec": ("K' = C_key^d mod n", "Dùng khóa bí mật d và định lý Euler để khôi phục chính xác khóa phiên K' ≡ K (mod n)."),
+        # AES-128 SPN & GCM sub-nodes
+        "AddRoundKey": ("AddRoundKey", "XOR trực tiếp ma trận State 4×4 với Round Key 128-bit sinh từ lịch khóa (Key Schedule)."),
+        "SubBytes": ("SubBytes (S-Box)", "Thay thế phi tuyến từng byte qua bảng S-Box dựa trên nghịch đảo trong trường GF(2⁸)."),
+        "ShiftRows": ("ShiftRows", "Dịch vòng trái các hàng 1, 2, 3 của ma trận State lần lượt 1, 2, 3 byte để khuếch tán ngang."),
+        "MixColumns": ("MixColumns", "Nhân từng cột State với ma trận cố định trên GF(2⁸) tạo khuếch tán mạnh giữa các byte."),
+        "J_0": ("J_0 (Initial Counter)", "Ghép Nonce/IV 96-bit với 31 bit 0 và 1 bit 1 (IV || 0³¹1) làm bộ đếm gốc tính Auth Tag."),
+        "CB_i": ("CB_i (Counter Block)", "Tăng bộ đếm 32-bit cuối khối lên 1 cho mỗi khối bản rõ 128-bit (CB_i = inc₃₂(CB_{i-1}))."),
+        "CTR": ("CTR XOR", "Mã hóa/giải mã luồng bằng cách XOR bản rõ P_i với khối khóa AES_K(CB_i) mà không cần padding."),
+        "GHASH": ("GHASH GF(2¹²⁸)", "Nhân dồn Horner bản mã C_data và độ dài trên trường Galois GF(2¹²⁸) với khóa H = AES_K(0¹²⁸)."),
+        "Tag": ("Auth Tag (16B)", "XOR kết quả GHASH cuối cùng X_m với AES_K(J_0) để tạo thẻ xác thực toàn vẹn 128-bit."),
+    }
+
+    def _short_hex(b: bytes | None, limit: int = 24) -> str:
+        if not b:
+            return "—"
+        h = b.hex()
+        return h if len(h) <= limit else f"{h[:limit]}… ({len(b)}B)"
+
+    def _short_int(val: int | None, limit: int = 22) -> str:
+        if val is None:
+            return "—"
+        s = str(val)
+        return s if len(s) <= limit else f"{s[:limit]}… ({val.bit_length()}b)"
+
+    def get_subnode_live_value(nid: str) -> str:
+        if nid == "rsa_pq":
+            return "p, q: 256-bit primes (đã sinh)" if alg_data["pub"] else "Chưa sinh p, q"
+        if nid == "rsa_n_phi":
+            return f"n = {_short_int(alg_data['pub'][1])}" if alg_data["pub"] else "n = (chưa có)"
+        if nid == "rsa_ed":
+            if alg_data["pub"] and alg_data["priv"]:
+                return f"e = {alg_data['pub'][0]} | d = {_short_int(alg_data['priv'][0])}"
+            return "e = 65537 | d = (chưa có)"
+        if nid == "rsa_enc":
+            return f"C_key = 0x{alg_data['c_key']:x}"[:42] + ("…" if alg_data["c_key"] and len(f"0x{alg_data['c_key']:x}") > 40 else "") if alg_data["c_key"] else "C_key = (chưa có)"
+        if nid == "rsa_dec":
+            return f"K' = {_short_hex(alg_data['recovered_k'], 32)}" if alg_data["recovered_k"] else "K' = (chưa có)"
+        if nid in ("AddRoundKey", "SubBytes", "ShiftRows", "MixColumns"):
+            return f"K = {_short_hex(alg_data['k_bytes'], 32)}"
+        if nid in ("J_0", "CB_i"):
+            return f"IV = {_short_hex(alg_data['iv'], 24)}"
+        if nid == "CTR":
+            if alg_data["active_stage"] == 5 and alg_data["decrypted_msg"] is not None:
+                return f"M' = \"{alg_data['decrypted_msg']}\" | C_data = {_short_hex(alg_data['c_data'], 20)}"
+            return f"C_data = {_short_hex(alg_data['c_data'], 24)}"
+        if nid in ("GHASH", "Tag"):
+            return f"Tag = {_short_hex(alg_data['tag'], 32)}"
+        return "—"
+
+    def build_rsa_sub_svg() -> str:
+        stage = alg_data["active_stage"]
+        sel = alg_data["active_subnode"]
+        nodes = [
+            ("rsa_pq", 14, "p, q (256-bit)", "Miller-Rabin k=20", stage == 1),
+            ("rsa_n_phi", 184, "n, φ(n)", "n=p·q | (p-1)(q-1)", stage == 1),
+            ("rsa_ed", 354, "e = 65537, d", "Euclid mở rộng", stage == 1),
+            ("rsa_enc", 524, "C_key = K^e mod n", "Mã hóa khóa K", stage == 3),
+            ("rsa_dec", 694, "K' = C_key^d mod n", "Khôi phục khóa K'", stage == 4),
+        ]
+        arrows = [(164, 184), (334, 354), (504, 524), (674, 694)]
+        parts = [
+            '<svg viewBox="0 0 860 116" class="w-full h-auto select-none">',
+            '<defs><marker id="alg-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">'
+            '<path d="M 0 1 L 10 5 L 0 9 z" fill="#64748b"/></marker></defs>',
+        ]
+        for x1, x2 in arrows:
+            parts.append(f'<line x1="{x1}" y1="58" x2="{x2 - 2}" y2="58" stroke="#94a3b8" stroke-width="2" marker-end="url(#alg-arr)"/>')
+        for nid, x, title, sub, is_stage_hl in nodes:
+            is_sel = (nid == sel)
+            fill = "#eef2ff" if is_sel else ("#f0fdfa" if is_stage_hl else "#ffffff")
+            stroke = "#4f46e5" if is_sel else ("#0d9488" if is_stage_hl else "#cbd5e1")
+            sw = "2.5" if is_sel else ("2" if is_stage_hl else "1.2")
+            t_col = "#312e81" if is_sel else "#0f172a"
+            parts.append(
+                f'<g class="svg-node" onclick="emitEvent(\'alg_node_select\', \'{nid}\')">'
+                f'<rect x="{x}" y="22" width="150" height="72" rx="10" fill="{fill}" stroke="{stroke}" stroke-width="{sw}"/>'
+                f'<text x="{x + 75}" y="50" text-anchor="middle" font-size="12" font-weight="700" fill="{t_col}">{html.escape(title)}</text>'
+                f'<text x="{x + 75}" y="70" text-anchor="middle" font-size="10" fill="#475569">{html.escape(sub)}</text>'
+                f'</g>'
+            )
+        parts.append("</svg>")
+        return "".join(parts)
+
+    def build_aes_sub_svg() -> str:
+        sel = alg_data["active_subnode"]
+        spn_nodes = [
+            ("AddRoundKey", 14, "AddRoundKey", "XOR RoundKey"),
+            ("SubBytes", 184, "SubBytes", "S-Box 8-bit"),
+            ("ShiftRows", 354, "ShiftRows", "Dịch vòng hàng"),
+            ("MixColumns", 524, "MixColumns", "Ma trận GF(2⁸)"),
+            ("AddRoundKey", 694, "AddRoundKey (R10)", "XOR Key cuối"),
+        ]
+        gcm_nodes = [
+            ("J_0", 14, "J_0", "IV || 0³¹1"),
+            ("CB_i", 184, "CB_i", "Counter tăng dần"),
+            ("CTR", 354, "CTR XOR", "P_i ⊕ AES_K(CB_i)"),
+            ("GHASH", 524, "GHASH GF(2¹²⁸)", "Nhân Horner"),
+            ("Tag", 694, "Auth Tag (16B)", "X_m ⊕ AES_K(J_0)"),
+        ]
+        parts = [
+            '<svg viewBox="0 0 860 194" class="w-full h-auto select-none">',
+            '<defs><marker id="alg-arr2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">'
+            '<path d="M 0 1 L 10 5 L 0 9 z" fill="#64748b"/></marker></defs>',
+            '<text x="14" y="14" font-size="10" font-weight="700" fill="#1d4ed8">AES-128 SPN (10 Vòng)</text>',
+            '<text x="14" y="106" font-size="10" font-weight="700" fill="#047857">GCM Mode (CTR + Xác thực GHASH)</text>',
+        ]
+        for row_y, row_nodes, hl_stroke, hl_fill in [
+            (22, spn_nodes, "#2563eb", "#eff6ff"),
+            (114, gcm_nodes, "#059669", "#ecfdf5"),
+        ]:
+            for x1, x2 in [(164, 184), (334, 354), (504, 524), (674, 694)]:
+                parts.append(f'<line x1="{x1}" y1="{row_y + 32}" x2="{x2 - 2}" y2="{row_y + 32}" stroke="#94a3b8" stroke-width="2" marker-end="url(#alg-arr2)"/>')
+            for nid, x, title, sub in row_nodes:
+                is_sel = (nid == sel)
+                fill = hl_fill if is_sel else "#ffffff"
+                stroke = hl_stroke if is_sel else "#cbd5e1"
+                sw = "2.5" if is_sel else "1.2"
+                parts.append(
+                    f'<g class="svg-node" onclick="emitEvent(\'alg_node_select\', \'{nid}\')">'
+                    f'<rect x="{x}" y="{row_y}" width="150" height="64" rx="10" fill="{fill}" stroke="{stroke}" stroke-width="{sw}"/>'
+                    f'<text x="{x + 75}" y="{row_y + 27}" text-anchor="middle" font-size="12" font-weight="700" fill="#0f172a">{html.escape(title)}</text>'
+                    f'<text x="{x + 75}" y="{row_y + 46}" text-anchor="middle" font-size="10" fill="#475569">{html.escape(sub)}</text>'
+                    f'</g>'
+                )
+        parts.append("</svg>")
+        return "".join(parts)
+
+    def refresh_ui():
+        # Update 5 pipeline stage cards
+        for sid in range(1, 6):
+            st = alg_data["stage_status"][sid]
+            is_active = (alg_data["active_stage"] == sid)
+            color = STAGE_META[sid]["color"]
+            ring = f"border-2 border-{color}-600 ring-2 ring-{color}-100 bg-{color}-50/40" if is_active else "border border-slate-200 bg-white hover:border-slate-300"
+            stage_cards[sid].classes(replace=f"p-2.5 rounded-xl cursor-pointer transition-all shadow-sm {ring}")
+
+            badge = stage_badges[sid]
+            if st == "done":
+                badge.set_text("✓ Xong")
+                badge.props("color=emerald")
+            elif st == "error":
+                badge.set_text("✗ Lỗi")
+                badge.props("color=rose")
+            else:
+                badge.set_text("Chờ")
+                badge.props("color=slate")
+
+        # Update detail header & 3 columns
+        sid = alg_data["active_stage"]
+        meta = STAGE_META[sid]
+        in_txt, proc_txt, out_txt = alg_data["stage_details"][sid]
+        c1, c2, c3 = meta["col_titles"]
+
+        lbl_detail_title.set_text(f"Khối {meta['num']}: {meta['title']}")
+        lbl_detail_sub.set_text(meta["sub"])
+        lbl_col1_title.set_text(c1)
+        lbl_col2_title.set_text(c2)
+        lbl_col3_title.set_text(c3)
+        txt_col1.set_text(in_txt)
+        txt_col2.set_text(proc_txt)
+        txt_col3.set_text(out_txt)
+
+        # Update interactive SVG sub-diagram
+        is_rsa = sid in (1, 3, 4)
+        if is_rsa and alg_data["active_subnode"] not in ("rsa_pq", "rsa_n_phi", "rsa_ed", "rsa_enc", "rsa_dec"):
+            alg_data["active_subnode"] = {1: "rsa_pq", 3: "rsa_enc", 4: "rsa_dec"}[sid]
+        elif not is_rsa and alg_data["active_subnode"] in ("rsa_pq", "rsa_n_phi", "rsa_ed", "rsa_enc", "rsa_dec"):
+            alg_data["active_subnode"] = "SubBytes" if sid == 2 else "GHASH"
+
+        lbl_sub_title.set_text("Sơ đồ số học RSA-512 (click khối để xem)" if is_rsa else "Sơ đồ nội bộ AES-128 SPN & GCM (click khối để xem)")
+        svg_sub_holder.set_content(build_rsa_sub_svg() if is_rsa else build_aes_sub_svg())
+
+        sub_id = alg_data["active_subnode"]
+        s_title, s_desc = SUBNODE_INFO.get(sub_id, ("—", ""))
+        lbl_subnode_name.set_text(s_title)
+        lbl_subnode_desc.set_text(s_desc)
+        lbl_subnode_live.set_text(get_subnode_live_value(sub_id))
+
+        # Live summary strip for AES-GCM stages
+        if is_rsa:
+            live_aes_strip.set_visibility(False)
+        else:
+            live_aes_strip.set_visibility(True)
+            lbl_live_k.set_text(_short_hex(alg_data["k_bytes"], 32))
+            lbl_live_iv.set_text(_short_hex(alg_data["iv"], 24))
+            lbl_live_c.set_text(_short_hex(alg_data["c_data"], 24))
+            lbl_live_tag.set_text(_short_hex(alg_data["tag"], 32))
+            lbl_live_m_out.set_text(f"\"{alg_data['decrypted_msg']}\"" if alg_data["decrypted_msg"] is not None else "—")
+
+    def select_stage(sid: int):
+        alg_data["active_stage"] = sid
+        if sid in (1, 3, 4):
+            alg_data["active_subnode"] = {1: "rsa_pq", 3: "rsa_enc", 4: "rsa_dec"}[sid]
+        else:
+            alg_data["active_subnode"] = "SubBytes" if sid == 2 else "GHASH"
+        refresh_ui()
+
+    def handle_alg_node_select(e):
+        nid = e.args
+        if nid in SUBNODE_INFO:
+            alg_data["active_subnode"] = nid
+            refresh_ui()
+
+    ui.on("alg_node_select", handle_alg_node_select)
 
     def execute_rsa_keygen(silent=False):
         pub, priv = generate_rsa_keys(bits=512)
@@ -945,22 +1177,36 @@ def page_algorithms():
         e_val, n_val = pub
         d_val, _ = priv
 
-        txt_rsa_keygen_process.set_text(
-            f"1. Sinh p, q (256-bit) qua kiểm tra nguyên tố Miller-Rabin (k=20)\n"
+        alg_data["stage_details"][1] = (
+            "• n: 512 bits | p, q: 256 bits\n• e = 65537 | Miller-Rabin: k = 20",
+            f"1. Sinh p, q (256-bit) qua Miller-Rabin (k=20)\n"
             f"2. Tính Modulus: n = p * q (512-bit)\n"
             f"3. Hàm Euler: phi(n) = (p - 1)(q - 1)\n"
             f"4. Chọn Fermat e = {e_val} (gcd(e, phi(n)) = 1)\n"
-            f"5. Euclid mở rộng tìm khóa bí mật d: e*d ≡ 1 mod phi(n)"
-        )
-        txt_rsa_keygen_output.set_text(
+            f"5. Euclid mở rộng tìm d: e*d ≡ 1 mod phi(n)",
             f"• Public Key (e, n):\n  e = {e_val}\n  n = {n_val}\n\n"
-            f"• Private Key (d, n):\n  d = {d_val}"
+            f"• Private Key (d, n):\n  d = {d_val}",
         )
-        lbl_k3_pub.set_text(f"e={e_val}, n={n_val}")
-        lbl_k4_priv.set_text(f"d={d_val}, n={n_val}")
-
+        # Update downstream input previews
+        k_hex = alg_data["k_bytes"].hex() if alg_data["k_bytes"] else "(chưa có)"
+        k_int = str(int.from_bytes(alg_data["k_bytes"], "big")) if alg_data["k_bytes"] else "(chưa có)"
+        alg_data["stage_details"][3] = (
+            f"• K (Hex): {k_hex}\n• K (Int): {k_int}\n• Pub (e, n): e={e_val}, n={n_val}",
+            alg_data["stage_details"][3][1],
+            alg_data["stage_details"][3][2],
+        )
+        ck_hex = f"0x{alg_data['c_key']:x}" if alg_data["c_key"] else "(chưa có)"
+        alg_data["stage_details"][4] = (
+            f"• C_key: {ck_hex}\n• Priv (d, n): d={d_val}, n={n_val}",
+            alg_data["stage_details"][4][1],
+            alg_data["stage_details"][4][2],
+        )
+        alg_data["stage_status"][1] = "done"
         if not silent:
+            alg_data["active_stage"] = 1
+            alg_data["active_subnode"] = "rsa_pq"
             notify("Đã sinh cặp khóa RSA-512", "teal")
+        refresh_ui()
 
     def execute_aes_gcm(silent=False):
         msg = inp_aes_msg.value.strip()
@@ -978,27 +1224,37 @@ def page_algorithms():
         alg_data["iv"] = iv
         alg_data["tag"] = tag
 
-        lbl_k2_key_hex.set_text(k_bytes.hex())
-        txt_aes_process.set_text(
+        alg_data["stage_details"][2] = (
+            f"• Thông điệp M ({len(m_bytes)}B):\n  \"{msg}\"\n\n• Khóa phiên K (128-bit):\n  {k_bytes.hex()}",
             f"1. Sinh khóa phiên K 128-bit (16B) bằng CSPRNG\n"
             f"2. Sinh Nonce / IV 12 bytes (96-bit)\n"
             f"3. Mã hóa CTR Mode: C_i = P_i ⊕ AES_K(CB_i)\n"
-            f"4. Nhân Horner trên GF(2^128) sinh Auth Tag (16B)"
-        )
-        txt_aes_output.set_text(
+            f"4. Nhân Horner trên GF(2^128) sinh Auth Tag (16B)",
             f"• Khóa phiên K (16B):\n  {k_bytes.hex()}\n\n"
             f"• Nonce / IV (12B):\n  {iv.hex()}\n\n"
             f"• C_data ({len(c_data)}B):\n  {c_data.hex()}\n\n"
-            f"• Auth Tag (16B):\n  {tag.hex()}"
+            f"• Auth Tag (16B):\n  {tag.hex()}",
         )
 
         k_int = int.from_bytes(k_bytes, "big")
-        lbl_k3_k_hex.set_text(k_bytes.hex())
-        lbl_k3_k_int.set_text(str(k_int))
-        lbl_k5_data_info.set_text(f"• IV: {iv.hex()[:16]}...\n• C_data: {c_data.hex()[:16]}... ({len(c_data)}B)\n• Tag: {tag.hex()}")
-
+        pub_str = f"e={alg_data['pub'][0]}, n={alg_data['pub'][1]}" if alg_data["pub"] else "(chưa có)"
+        alg_data["stage_details"][3] = (
+            f"• K (Hex): {k_bytes.hex()}\n• K (Int): {k_int}\n• Pub (e, n): {pub_str}",
+            alg_data["stage_details"][3][1],
+            alg_data["stage_details"][3][2],
+        )
+        rec_k = alg_data["recovered_k"].hex() if alg_data["recovered_k"] else "(chưa có)"
+        alg_data["stage_details"][5] = (
+            f"• K': {rec_k}\n• IV: {iv.hex()}\n• C_data ({len(c_data)}B): {c_data.hex()}\n• Tag: {tag.hex()}",
+            alg_data["stage_details"][5][1],
+            alg_data["stage_details"][5][2],
+        )
+        alg_data["stage_status"][2] = "done"
         if not silent:
+            alg_data["active_stage"] = 2
+            alg_data["active_subnode"] = "SubBytes"
             notify("AES-GCM: Đã sinh K và mã hóa thông điệp", "blue")
+        refresh_ui()
         return True
 
     def execute_rsa_enc(silent=False):
@@ -1019,20 +1275,27 @@ def page_algorithms():
         alg_data["c_key"] = c_key
 
         e_bin = bin(e_val)[2:]
-        txt_rsa_enc_process.set_text(
+        alg_data["stage_details"][3] = (
+            f"• K (Hex): {alg_data['k_bytes'].hex()}\n• K (Int): {k_int}\n• Pub (e, n): e={e_val}, n={n_val}",
             f"1. Chuyển K (16B) thành số nguyên: K = {k_int}\n"
             f"2. Kiểm tra K < n ({k_int < n_val})\n"
             f"3. Nhị phân e = {e_val}: {e_bin}\n"
-            f"4. Square-and-Multiply: C_key = K^e mod n"
-        )
-        txt_rsa_enc_output.set_text(
+            f"4. Square-and-Multiply: C_key = K^e mod n",
             f"• C_key (Hex):\n  0x{c_key:x}\n\n"
-            f"• C_key (Dec):\n  {c_key}"
+            f"• C_key (Dec):\n  {c_key}",
         )
-        lbl_k4_ckey.set_text(f"0x{c_key:x}")
-
+        d_str = f"d={alg_data['priv'][0]}, n={alg_data['priv'][1]}" if alg_data["priv"] else "(chưa có)"
+        alg_data["stage_details"][4] = (
+            f"• C_key: 0x{c_key:x}\n• Priv (d, n): {d_str}",
+            alg_data["stage_details"][4][1],
+            alg_data["stage_details"][4][2],
+        )
+        alg_data["stage_status"][3] = "done"
         if not silent:
+            alg_data["active_stage"] = 3
+            alg_data["active_subnode"] = "rsa_enc"
             notify("RSA: Đã mã hóa khóa K thành C_key", "indigo")
+        refresh_ui()
         return True
 
     def execute_rsa_dec(silent=False):
@@ -1040,7 +1303,7 @@ def page_algorithms():
             notify("Cần C_key và Private Key trước", "amber")
             return False
 
-        d_val, _ = alg_data["priv"]
+        d_val, n_val = alg_data["priv"]
         c_key = alg_data["c_key"]
 
         k_rec_int = rsa_decrypt(alg_data["priv"], c_key)
@@ -1048,22 +1311,30 @@ def page_algorithms():
         alg_data["recovered_k"] = k_rec_bytes
 
         is_matched = (k_rec_bytes == alg_data["k_bytes"])
-
-        txt_rsa_dec_process.set_text(
+        alg_data["stage_details"][4] = (
+            f"• C_key: 0x{c_key:x}\n• Priv (d, n): d={d_val}, n={n_val}",
             f"1. Nạp C_key: 0x{c_key:x}\n"
             f"2. Nạp Private Key d: {d_val}\n"
             f"3. Định lý Euler: K' = (C_key)^d mod n ≡ K mod n\n"
-            f"4. Chuyển K' về 16 bytes AES"
-        )
-        txt_rsa_dec_output.set_text(
+            f"4. Chuyển K' về 16 bytes AES",
             f"• K' khôi phục (16B):\n  {k_rec_bytes.hex()}\n\n"
             f"• K gốc:\n  {alg_data['k_bytes'].hex()}\n\n"
-            f"• Đối chiếu: {'✓ TRÙNG KHỚP' if is_matched else '✗ THẤT BẠI'}"
+            f"• Đối chiếu: {'✓ TRÙNG KHỚP' if is_matched else '✗ THẤT BẠI'}",
         )
-        lbl_k5_rec_k.set_text(k_rec_bytes.hex())
-
+        iv_hex = alg_data["iv"].hex() if alg_data["iv"] else "—"
+        cd_hex = alg_data["c_data"].hex() if alg_data["c_data"] else "—"
+        tg_hex = alg_data["tag"].hex() if alg_data["tag"] else "—"
+        alg_data["stage_details"][5] = (
+            f"• K': {k_rec_bytes.hex()}\n• IV: {iv_hex}\n• C_data: {cd_hex}\n• Tag: {tg_hex}",
+            alg_data["stage_details"][5][1],
+            alg_data["stage_details"][5][2],
+        )
+        alg_data["stage_status"][4] = "done" if is_matched else "error"
         if not silent:
+            alg_data["active_stage"] = 4
+            alg_data["active_subnode"] = "rsa_dec"
             notify("RSA Dec: Đã khôi phục khóa K'", "teal")
+        refresh_ui()
         return True
 
     def execute_aes_dec(silent=False):
@@ -1071,6 +1342,12 @@ def page_algorithms():
             notify("Cần K' và dữ liệu từ Khối 2 trước", "amber")
             return False
 
+        in_k5 = (
+            f"• K': {alg_data['recovered_k'].hex()}\n"
+            f"• IV: {alg_data['iv'].hex()}\n"
+            f"• C_data ({len(alg_data['c_data'])}B): {alg_data['c_data'].hex()}\n"
+            f"• Tag: {alg_data['tag'].hex()}"
+        )
         try:
             pt_bytes = aes_gcm_decrypt(
                 session_key=alg_data["recovered_k"],
@@ -1079,34 +1356,41 @@ def page_algorithms():
                 auth_tag_bytes=alg_data["tag"],
             )
             msg_recovered = pt_bytes.decode("utf-8")
+            alg_data["decrypted_msg"] = msg_recovered
+            alg_data["error_msg"] = None
 
-            txt_aes_dec_process.set_text(
+            alg_data["stage_details"][5] = (
+                in_k5,
                 f"1. Nạp K' từ Khối 4 và (IV, C_data, Tag) từ Khối 2\n"
                 f"2. Xác thực GHASH trên GF(2^128): Tag khớp!\n"
                 f"3. Giải mã CTR: P_i = C_i ⊕ AES_K'(CB_i)\n"
-                f"4. Giải mã UTF-8 thành chuỗi M'"
-            )
-            txt_aes_dec_output.set_text(
+                f"4. Giải mã UTF-8 thành chuỗi M'",
                 f"• Bản rõ khôi phục M':\n  \"{msg_recovered}\"\n\n"
                 f"• Bản rõ gốc M:\n  \"{alg_data['plaintext']}\"\n\n"
-                f"✓ KHÔI PHỤC CHÍNH XÁC (M' == M)"
+                f"✓ KHÔI PHỤC CHÍNH XÁC (M' == M)",
             )
-            card_k5.classes(replace="w-full p-4 bg-emerald-50/70 rounded-xl shadow-md border-2 border-emerald-600 transition-all")
-            badge_k5.set_text("ĐÃ KHÔI PHỤC M'")
-            badge_k5.props("color=emerald")
-
+            alg_data["stage_status"][5] = "done"
             if not silent:
+                alg_data["active_stage"] = 5
+                alg_data["active_subnode"] = "GHASH"
                 notify("Đã khôi phục trọn vẹn thông điệp gốc!", "emerald")
+            refresh_ui()
             return True
 
         except Exception as e:
-            txt_aes_dec_process.set_text(f"Lỗi xác thực hoặc giải mã: {e}")
-            txt_aes_dec_output.set_text(f"✗ Thất bại: {e}")
-            card_k5.classes(replace="w-full p-4 bg-rose-50/70 rounded-xl shadow-md border-2 border-rose-600 transition-all")
-            badge_k5.set_text("LỖI TOÀN VẸN")
-            badge_k5.props("color=rose")
+            alg_data["decrypted_msg"] = None
+            alg_data["error_msg"] = str(e)
+            alg_data["stage_details"][5] = (
+                in_k5,
+                f"Lỗi xác thực hoặc giải mã: {e}",
+                f"✗ Thất bại: {e}",
+            )
+            alg_data["stage_status"][5] = "error"
             if not silent:
+                alg_data["active_stage"] = 5
+                alg_data["active_subnode"] = "GHASH"
                 notify(f"Lỗi: {e}", "red")
+            refresh_ui()
             return False
 
     async def run_all_blocks():
@@ -1127,150 +1411,121 @@ def page_algorithms():
         await asyncio.sleep(0.15)
         execute_aes_dec(silent=True)
         btn_run_all.props(remove="loading")
+        alg_data["active_stage"] = 5
+        alg_data["active_subnode"] = "GHASH"
+        refresh_ui()
         notify("Đã hoàn tất toàn bộ 5 khối!", "emerald")
 
     def reset_blocks():
-        for key in ("plaintext", "k_bytes", "iv", "c_data", "tag", "c_key", "recovered_k"):
+        for key in ("plaintext", "k_bytes", "iv", "c_data", "tag", "c_key", "recovered_k", "decrypted_msg", "error_msg"):
             alg_data[key] = None
+        for sid in range(2, 6):
+            alg_data["stage_status"][sid] = "waiting"
+        alg_data["stage_details"][2] = ("• Thông điệp M (UTF-8)\n• Khóa phiên K (128-bit): —", "Nhấn 'Chạy' để sinh K và mã hóa AES-GCM...", "Chưa có kết quả...")
+        alg_data["stage_details"][3] = ("• K (16B): (chưa có)\n• Public Key (e, n): (chưa có)", "Chờ nhận K từ Khối 2...", "Chưa có kết quả...")
+        alg_data["stage_details"][4] = ("• C_key: (chưa có)\n• Private Key (d, n): (chưa có)", "Chờ nhận C_key từ Khối 3...", "Chưa có kết quả...")
+        alg_data["stage_details"][5] = ("• K': (chưa có)\n• IV, C_data, Tag: (lấy từ Khối 2)", "Chờ nhận K' từ Khối 4...", "Chờ thực thi...")
+        alg_data["active_stage"] = 1
+        alg_data["active_subnode"] = "rsa_pq"
         execute_rsa_keygen(silent=True)
-        lbl_k2_key_hex.set_text("—")
-        txt_aes_process.set_text("Nhấn 'Mã Hóa AES-GCM' để bắt đầu...")
-        txt_aes_output.set_text("Chưa có kết quả...")
-        lbl_k3_k_hex.set_text("(chưa có)")
-        lbl_k3_k_int.set_text("(chưa có)")
-        txt_rsa_enc_process.set_text("Chờ nhận K từ Khối 2...")
-        txt_rsa_enc_output.set_text("Chưa có kết quả...")
-        lbl_k4_ckey.set_text("(chưa có)")
-        txt_rsa_dec_process.set_text("Chờ nhận C_key từ Khối 3...")
-        txt_rsa_dec_output.set_text("Chưa có kết quả...")
-        lbl_k5_rec_k.set_text("(chưa có)")
-        lbl_k5_data_info.set_text("• IV, C_data, Tag lấy từ Khối 2")
-        txt_aes_dec_process.set_text("Chờ nhận K' từ Khối 4...")
-        txt_aes_dec_output.set_text("Chờ thực thi...")
-        card_k5.classes(replace="w-full p-4 bg-white rounded-xl shadow-sm border border-slate-200 transition-all")
-        badge_k5.set_text("CHỜ KHÓA K'")
-        badge_k5.props("color=slate")
         notify("Đã làm mới dữ liệu các khối", "blue")
 
-    with ui.column().classes("w-full max-w-6xl mx-auto p-4 gap-4"):
-        with ui.card().classes("w-full p-4 bg-white rounded-xl shadow-sm border border-slate-200"):
+    STAGE_RUNNERS = {
+        1: lambda: execute_rsa_keygen(),
+        2: lambda: execute_aes_gcm(),
+        3: lambda: execute_rsa_enc(),
+        4: lambda: execute_rsa_dec(),
+        5: lambda: execute_aes_dec(),
+    }
+
+    with ui.column().classes("w-full max-w-6xl mx-auto p-4 gap-3"):
+        # 1. TOP CONTROL BAR
+        with ui.card().classes("w-full p-3.5 bg-white rounded-xl shadow-sm border border-slate-200"):
             with ui.row().classes("items-center justify-between w-full flex-wrap gap-2 pb-2 border-b border-slate-100"):
                 with ui.row().classes("items-center gap-2"):
-                    ui.icon("tune", size="1.5rem").classes("text-indigo-600")
+                    ui.icon("tune", size="1.4rem").classes("text-indigo-600")
                     with ui.column().classes("gap-0"):
-                        ui.label("Chi Tiết 5 Khối Thuật Toán (Nối Liền Dữ Liệu Thật)").classes("text-base font-bold text-slate-800")
-                        ui.label("M: Thông điệp gốc • K: Khóa phiên 128-bit • Đầu ra khối trên truyền trực tiếp xuống khối dưới").classes("text-xs text-slate-500")
+                        ui.label("Pipeline 5 Khối Thuật Toán & Sơ Đồ Nội Bộ").classes("text-base font-bold text-slate-800")
+                        ui.label("Click từng khối trên pipeline để kiểm tra dữ liệu & sơ đồ toán học bên trong").classes("text-xs text-slate-500")
                 with ui.row().classes("items-center gap-2"):
-                    btn_run_all = ui.button("▶ Chạy Tuần Tự", on_click=run_all_blocks).classes("bg-indigo-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg")
-                    ui.button("↺ Làm Mới", on_click=reset_blocks).classes("bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg")
-                    ui.button("Về Sơ Đồ", icon="arrow_back", on_click=lambda: ui.navigate.to("/")).classes("bg-slate-800 text-white text-xs px-3 py-1.5 rounded-lg")
+                    btn_run_all = ui.button("▶ Chạy tất cả", on_click=run_all_blocks).classes("bg-indigo-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg")
+                    ui.button("↺ Làm mới", on_click=reset_blocks).classes("bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg")
+                    ui.button("← Về sơ đồ chính", on_click=lambda: ui.navigate.to("/")).classes("bg-slate-800 text-white text-xs px-3 py-1.5 rounded-lg")
 
             with ui.row().classes("w-full items-center gap-2 pt-2 flex-wrap"):
                 ui.label("Thông điệp M:").classes("text-xs font-semibold text-slate-600")
-                inp_aes_msg = ui.input(value="Hello cô Hạnh").classes("flex-1 min-w-[260px] text-xs font-medium").props("outlined dense")
+                inp_aes_msg = ui.input(value="Hello cô Hạnh").classes("flex-1 min-w-[240px] text-xs font-medium").props("outlined dense")
                 ui.button("Mẫu: Hello cô Hạnh", on_click=lambda: inp_aes_msg.set_value("Hello cô Hạnh")).props("flat dense").classes("text-xs text-indigo-600")
                 ui.button("Mẫu: Nhóm 7", on_click=lambda: inp_aes_msg.set_value("Xin chào Cô Hạnh, bọn em là nhóm 7")).props("flat dense").classes("text-xs text-indigo-600")
 
-        # KHỐI 1
-        with ui.card().classes("w-full p-4 bg-white rounded-xl shadow-sm border border-slate-200"):
-            with ui.row().classes("items-center justify-between w-full pb-2 mb-2 border-b border-slate-100"):
-                with ui.row().classes("items-center gap-2"):
-                    ui.label("1").classes("w-6 h-6 rounded-full bg-teal-600 text-white flex items-center justify-center text-xs font-bold")
-                    ui.label("Tạo Khóa RSA (Bob)").classes("text-sm font-bold text-slate-800")
-                    ui.badge("RSA-512", color="teal").classes("text-[10px]")
-                ui.button("Tạo Cặp Khóa", icon="refresh", on_click=lambda: execute_rsa_keygen()).classes("bg-teal-600 text-white text-xs px-3 py-1 rounded")
-            with ui.grid(columns=3).classes("w-full gap-3 items-stretch"):
-                with ui.card().classes("p-3 bg-slate-50 rounded-lg border border-slate-200"):
-                    ui.label("THAM SỐ").classes("text-[11px] font-bold text-slate-600 uppercase border-b pb-1")
-                    ui.label("• n: 512 bits | p, q: 256 bits\n• e = 65537 | Miller-Rabin: k = 20").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap mt-2")
-                with ui.card().classes("p-3 bg-teal-50/50 rounded-lg border border-teal-200"):
-                    ui.label("XỬ LÝ SỐ HỌC").classes("text-[11px] font-bold text-teal-800 uppercase border-b border-teal-200 pb-1")
-                    txt_rsa_keygen_process = ui.label("Nhấn 'Tạo Cặp Khóa'...").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap mt-2")
-                with ui.card().classes("p-3 bg-emerald-50/50 rounded-lg border border-emerald-200"):
-                    ui.label("OUTPUT").classes("text-[11px] font-bold text-emerald-800 uppercase border-b border-emerald-200 pb-1")
-                    txt_rsa_keygen_output = ui.label("Chưa có khóa...").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap break-all mt-2")
+        # 2. 5-STAGE INTERACTIVE PIPELINE BAR
+        stage_cards = {}
+        stage_badges = {}
+        with ui.grid(columns=5).classes("w-full gap-2"):
+            for sid in range(1, 6):
+                meta = STAGE_META[sid]
+                color = meta["color"]
+                card = ui.card().classes("p-2.5 rounded-xl cursor-pointer transition-all shadow-sm border border-slate-200 bg-white")
+                card.on("click", lambda _, s=sid: select_stage(s))
+                stage_cards[sid] = card
+                with card:
+                    with ui.row().classes("items-center justify-between w-full"):
+                        ui.label(meta["num"]).classes(f"w-5 h-5 rounded-full bg-{color}-600 text-white flex items-center justify-center text-[11px] font-bold")
+                        stage_badges[sid] = ui.badge("Chờ", color="slate").classes("text-[10px]")
+                    ui.label(meta["title"]).classes("text-xs font-bold text-slate-800 mt-1.5 leading-tight")
+                    ui.label(meta["sub"]).classes("text-[10px] text-slate-500 truncate w-full")
+                    btn = ui.button("▶ Chạy", on_click=STAGE_RUNNERS[sid]).props("flat dense").classes(f"text-[11px] font-semibold text-{color}-700 mt-1 px-1.5 py-0.5 rounded bg-{color}-50 hover:bg-{color}-100")
+                    btn.on("click.stop", lambda: None)
 
-        # KHỐI 2
-        with ui.card().classes("w-full p-4 bg-white rounded-xl shadow-sm border border-slate-200"):
-            with ui.row().classes("items-center justify-between w-full pb-2 mb-2 border-b border-slate-100"):
-                with ui.row().classes("items-center gap-2"):
-                    ui.label("2").classes("w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold")
-                    ui.label("Mã Hóa AES-GCM (Alice)").classes("text-sm font-bold text-slate-800")
-                    ui.badge("AES-128-GCM", color="blue").classes("text-[10px]")
-                ui.button("Mã Hóa AES-GCM", icon="lock", on_click=lambda: execute_aes_gcm()).classes("bg-blue-600 text-white text-xs px-3 py-1 rounded")
-            with ui.grid(columns=3).classes("w-full gap-3 items-stretch"):
-                with ui.card().classes("p-3 bg-slate-50 rounded-lg border border-slate-200"):
-                    ui.label("INPUT").classes("text-[11px] font-bold text-slate-600 uppercase border-b pb-1")
-                    ui.label("Khóa phiên K (128-bit):").classes("text-xs text-slate-500 font-semibold mt-2")
-                    lbl_k2_key_hex = ui.label("—").classes("text-xs font-mono text-blue-700 break-all")
-                with ui.card().classes("p-3 bg-blue-50/50 rounded-lg border border-blue-200"):
-                    ui.label("XỬ LÝ (CTR & GHASH)").classes("text-[11px] font-bold text-blue-800 uppercase border-b border-blue-200 pb-1")
-                    txt_aes_process = ui.label("Nhấn 'Mã Hóa AES-GCM'...").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap mt-2")
-                with ui.card().classes("p-3 bg-emerald-50/50 rounded-lg border border-emerald-200"):
-                    ui.label("OUTPUT").classes("text-[11px] font-bold text-emerald-800 uppercase border-b border-emerald-200 pb-1")
-                    txt_aes_output = ui.label("Chưa có kết quả...").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap break-all mt-2")
+        # 3. STAGE DETAIL + INTERACTIVE SVG SUB-DIAGRAM
+        with ui.card().classes("w-full p-4 bg-white rounded-xl shadow-sm border border-slate-200 gap-3"):
+            with ui.row().classes("items-center justify-between w-full pb-2 border-b border-slate-100 flex-wrap gap-2"):
+                with ui.column().classes("gap-0"):
+                    lbl_detail_title = ui.label("Khối 1: Sinh khóa RSA-512").classes("text-sm font-bold text-slate-800")
+                    lbl_detail_sub = ui.label("Bob • p, q, n, e, d").classes("text-xs text-slate-500")
+                ui.button("▶ Chạy khối đang xem", on_click=lambda: STAGE_RUNNERS[alg_data["active_stage"]]()).classes("bg-indigo-600 text-white text-xs font-semibold px-3 py-1 rounded-lg")
 
-        # KHỐI 3
-        with ui.card().classes("w-full p-4 bg-white rounded-xl shadow-sm border border-slate-200"):
-            with ui.row().classes("items-center justify-between w-full pb-2 mb-2 border-b border-slate-100"):
-                with ui.row().classes("items-center gap-2"):
-                    ui.label("3").classes("w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold")
-                    ui.label("Mã Hóa Khóa Phiên K Bằng RSA (Alice)").classes("text-sm font-bold text-slate-800")
-                    ui.badge("C_key = K^e mod n", color="indigo").classes("text-[10px]")
-                ui.button("Mã Hóa RSA K", icon="vpn_key", on_click=lambda: execute_rsa_enc()).classes("bg-indigo-600 text-white text-xs px-3 py-1 rounded")
-            with ui.grid(columns=3).classes("w-full gap-3 items-stretch"):
-                with ui.card().classes("p-3 bg-slate-50 rounded-lg border border-slate-200"):
-                    ui.label("INPUT (TỪ KHỐI 1 & 2)").classes("text-[11px] font-bold text-slate-600 uppercase border-b pb-1")
-                    lbl_k3_k_hex = ui.label("(chưa có)").classes("text-xs font-mono text-blue-700 break-all mt-1")
-                    lbl_k3_k_int = ui.label("(chưa có)").classes("text-xs font-mono text-slate-700 truncate w-full")
-                    lbl_k3_pub = ui.label("...").classes("text-xs font-mono text-teal-700 truncate w-full mt-1")
-                with ui.card().classes("p-3 bg-indigo-50/50 rounded-lg border border-indigo-200"):
-                    ui.label("XỬ LÝ SỐ HỌC").classes("text-[11px] font-bold text-indigo-800 uppercase border-b border-indigo-200 pb-1")
-                    txt_rsa_enc_process = ui.label("Chờ nhận K từ Khối 2...").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap mt-2")
-                with ui.card().classes("p-3 bg-emerald-50/50 rounded-lg border border-emerald-200"):
-                    ui.label("OUTPUT (C_key)").classes("text-[11px] font-bold text-emerald-800 uppercase border-b border-emerald-200 pb-1")
-                    txt_rsa_enc_output = ui.label("Chưa có kết quả...").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap break-all mt-2")
+            # Interactive SVG Sub-Diagram + 1-sentence Inspector
+            with ui.card().classes("w-full p-3 dot-grid-bg rounded-xl border border-slate-200 gap-2"):
+                lbl_sub_title = ui.label("Sơ đồ số học RSA-512").classes("text-xs font-bold text-slate-700")
+                svg_sub_holder = ui.html("", sanitize=False).classes("w-full")
 
-        # KHỐI 4
-        with ui.card().classes("w-full p-4 bg-white rounded-xl shadow-sm border border-slate-200"):
-            with ui.row().classes("items-center justify-between w-full pb-2 mb-2 border-b border-slate-100"):
-                with ui.row().classes("items-center gap-2"):
-                    ui.label("4").classes("w-6 h-6 rounded-full bg-teal-700 text-white flex items-center justify-center text-xs font-bold")
-                    ui.label("Giải Mã RSA Khôi Phục K' (Bob)").classes("text-sm font-bold text-slate-800")
-                    ui.badge("K' = (C_key)^d mod n", color="teal").classes("text-[10px]")
-                ui.button("Giải Mã RSA K", icon="lock_open", on_click=lambda: execute_rsa_dec()).classes("bg-teal-700 text-white text-xs px-3 py-1 rounded")
-            with ui.grid(columns=3).classes("w-full gap-3 items-stretch"):
-                with ui.card().classes("p-3 bg-slate-50 rounded-lg border border-slate-200"):
-                    ui.label("INPUT (TỪ KHỐI 1 & 3)").classes("text-[11px] font-bold text-slate-600 uppercase border-b pb-1")
-                    lbl_k4_ckey = ui.label("(chưa có)").classes("text-xs font-mono text-indigo-700 truncate w-full mt-1")
-                    lbl_k4_priv = ui.label("...").classes("text-xs font-mono text-rose-600 truncate w-full mt-1")
-                with ui.card().classes("p-3 bg-teal-50/50 rounded-lg border border-teal-200"):
-                    ui.label("XỬ LÝ (ĐỊNH LÝ EULER)").classes("text-[11px] font-bold text-teal-800 uppercase border-b border-teal-200 pb-1")
-                    txt_rsa_dec_process = ui.label("Chờ nhận C_key từ Khối 3...").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap break-all mt-2")
-                with ui.card().classes("p-3 bg-emerald-50/50 rounded-lg border border-emerald-200"):
-                    ui.label("OUTPUT (K')").classes("text-[11px] font-bold text-emerald-800 uppercase border-b border-emerald-200 pb-1")
-                    txt_rsa_dec_output = ui.label("Chưa có kết quả...").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap break-all mt-2")
+                with ui.row().classes("w-full items-center justify-between bg-white/95 rounded-lg border border-slate-200 px-3 py-2 gap-3 flex-wrap"):
+                    with ui.column().classes("gap-0.5 flex-1 min-w-[260px]"):
+                        lbl_subnode_name = ui.label("—").classes("text-xs font-bold text-indigo-700")
+                        lbl_subnode_desc = ui.label("—").classes("text-xs text-slate-600")
+                    lbl_subnode_live = ui.label("—").classes("text-[11px] font-mono text-slate-800 bg-slate-100 px-2.5 py-1 rounded border border-slate-200 break-all max-w-full")
 
-        # KHỐI 5
-        card_k5 = ui.card().classes("w-full p-4 bg-white rounded-xl shadow-sm border border-slate-200 transition-all")
-        with card_k5:
-            with ui.row().classes("items-center justify-between w-full pb-2 mb-2 border-b border-slate-100"):
-                with ui.row().classes("items-center gap-2"):
-                    ui.label("5").classes("w-6 h-6 rounded-full bg-emerald-700 text-white flex items-center justify-center text-xs font-bold")
-                    ui.label("Giải Mã AES-GCM Khôi Phục M' (Bob)").classes("text-sm font-bold text-slate-800")
-                    badge_k5 = ui.badge("CHỜ KHÓA K'", color="slate").classes("text-[10px]")
-                ui.button("Giải Mã M'", icon="task_alt", on_click=lambda: execute_aes_dec()).classes("bg-emerald-600 text-white text-xs font-bold px-4 py-1.5 rounded")
+                live_aes_strip = ui.row().classes("w-full gap-2 flex-wrap pt-1")
+                with live_aes_strip:
+                    for lbl_name, ref_holder in [
+                        ("K:", "k"), ("IV:", "iv"), ("C_data:", "c"), ("Tag:", "tag"), ("M':", "m_out")
+                    ]:
+                        with ui.row().classes("items-center gap-1 bg-white px-2 py-1 rounded border border-slate-200"):
+                            ui.label(lbl_name).classes("text-[10px] font-bold text-slate-500")
+                            lbl_val = ui.label("—").classes("text-[10px] font-mono text-slate-800 break-all")
+                            if ref_holder == "k":
+                                lbl_live_k = lbl_val
+                            elif ref_holder == "iv":
+                                lbl_live_iv = lbl_val
+                            elif ref_holder == "c":
+                                lbl_live_c = lbl_val
+                            elif ref_holder == "tag":
+                                lbl_live_tag = lbl_val
+                            else:
+                                lbl_live_m_out = lbl_val
+
+            # Compact 3-Column Inspector (Input | Arithmetic/Crypto Process | Output)
             with ui.grid(columns=3).classes("w-full gap-3 items-stretch"):
                 with ui.card().classes("p-3 bg-slate-50 rounded-lg border border-slate-200"):
-                    ui.label("INPUT").classes("text-[11px] font-bold text-slate-600 uppercase border-b pb-1")
-                    lbl_k5_rec_k = ui.label("(chưa có)").classes("text-xs font-mono text-teal-700 break-all mt-1")
-                    lbl_k5_data_info = ui.label("• IV, C_data, Tag lấy từ Khối 2").classes("text-xs font-mono text-slate-600 mt-1")
-                with ui.card().classes("p-3 bg-emerald-50/50 rounded-lg border border-emerald-200"):
-                    ui.label("KIỂM THỰC GHASH & GIẢI MÃ").classes("text-[11px] font-bold text-emerald-800 uppercase border-b border-emerald-200 pb-1")
-                    txt_aes_dec_process = ui.label("Chờ nhận K' từ Khối 4...").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap mt-2")
-                with ui.card().classes("p-3 bg-white rounded-lg border-2 border-emerald-500"):
-                    ui.label("OUTPUT (M')").classes("text-[11px] font-bold text-emerald-900 uppercase border-b border-emerald-200 pb-1")
-                    txt_aes_dec_output = ui.label("Chờ thực thi...").classes("text-xs font-mono text-slate-800 whitespace-pre-wrap mt-1")
+                    lbl_col1_title = ui.label("INPUT").classes("text-[11px] font-bold text-slate-600 uppercase border-b pb-1")
+                    txt_col1 = ui.label("").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap break-all mt-2 max-h-48 overflow-y-auto")
+                with ui.card().classes("p-3 bg-indigo-50/40 rounded-lg border border-indigo-200"):
+                    lbl_col2_title = ui.label("XỬ LÝ").classes("text-[11px] font-bold text-indigo-800 uppercase border-b border-indigo-200 pb-1")
+                    txt_col2 = ui.label("").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap break-all mt-2 max-h-48 overflow-y-auto")
+                with ui.card().classes("p-3 bg-emerald-50/40 rounded-lg border border-emerald-200"):
+                    lbl_col3_title = ui.label("OUTPUT").classes("text-[11px] font-bold text-emerald-800 uppercase border-b border-emerald-200 pb-1")
+                    txt_col3 = ui.label("").classes("text-xs font-mono text-slate-800 whitespace-pre-wrap break-all mt-2 max-h-48 overflow-y-auto")
 
     execute_rsa_keygen(silent=True)
 
