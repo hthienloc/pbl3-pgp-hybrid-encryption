@@ -7,6 +7,7 @@ Mô phỏng trực quan PGP Hybrid (RSA-512 + AES-128-GCM) bằng NiceGUI.
 
 import os
 import sys
+import re
 import asyncio
 import html
 from nicegui import ui
@@ -197,6 +198,60 @@ def short_hex(b: bytes | None, limit: int = 16) -> str:
     return h if len(h) <= limit else f"{h[:limit]}…"
 
 
+_MATH_SUB_MAP = {
+    "C_key": ("C", "key"),
+    "C_data": ("C", "data"),
+    "K_int": ("K", "int"),
+    "M_bytes": ("M", "bytes"),
+    "P_bytes": ("P", "bytes"),
+    "GHASH_computed": ("GHASH", "computed"),
+    "d_eve": ("d", "eve"),
+    "CB_{i-1}": ("CB", "i-1"),
+    "CB_i": ("CB", "i"),
+    "CB_0": ("CB", "0"),
+    "CB_1": ("CB", "1"),
+    "P_i": ("P", "i"),
+    "C_i": ("C", "i"),
+    "J_0": ("J", "0"),
+    "X_m": ("X", "m"),
+    "X_i": ("X", "i"),
+    "AES_K'": ("AES", "K'"),
+    "AES_K": ("AES", "K"),
+    "inc_32": ("inc", "32"),
+}
+_MATH_SUB_RE = re.compile(
+    "|".join(re.escape(k) for k in sorted(_MATH_SUB_MAP, key=len, reverse=True))
+)
+_MATH_SUP_RE = re.compile(r"\^(128|-1|e|d)\b")
+
+
+def _format_math(text: str, sub_fmt, sup_fmt) -> str:
+    escaped = html.escape(text)
+    escaped = _MATH_SUB_RE.sub(
+        lambda m: f"{_MATH_SUB_MAP[m.group(0)][0]}{sub_fmt(_MATH_SUB_MAP[m.group(0)][1])}",
+        escaped,
+    )
+    return _MATH_SUP_RE.sub(lambda m: sup_fmt(m.group(1)), escaped)
+
+
+def format_math_html(text: str) -> str:
+    """Định dạng chỉ số trên/dưới bằng thẻ HTML <sub>/<sup> cho các ký hiệu mật mã."""
+    return _format_math(
+        text,
+        lambda s: f'<sub class="text-[0.75em] leading-none">{s}</sub>',
+        lambda s: f'<sup class="text-[0.75em] leading-none">{s}</sup>',
+    )
+
+
+def format_math_svg(text: str) -> str:
+    """Định dạng chỉ số trên/dưới bằng <tspan> cho nhãn trong SVG."""
+    return _format_math(
+        text,
+        lambda s: f'<tspan baseline-shift="sub" font-size="75%">{s}</tspan>',
+        lambda s: f'<tspan baseline-shift="super" font-size="75%">{s}</tspan>',
+    )
+
+
 def setup_page_head():
     ui.query("body").style("background-color: #f8fafc;")
     ui.add_head_html(r"""
@@ -359,7 +414,7 @@ def page_integrated():
             marker = "url(#arr-err)" if err else ("url(#arr-sel)" if is_sel else ("url(#arr-ok)" if active else "url(#arr-idle)"))
             lbl_html = (
                 f'<rect x="{lx-28}" y="{ly-9}" width="56" height="16" rx="4" fill="#ffffff" stroke="{col}" stroke-width="1"/>'
-                f'<text x="{lx}" y="{ly+3}" text-anchor="middle" font-size="9.5" font-family="monospace" font-weight="700" fill="{col}">{html.escape(label)}</text>'
+                f'<text x="{lx}" y="{ly+3}" text-anchor="middle" font-size="9.5" font-family="monospace" font-weight="700" fill="{col}">{format_math_svg(label)}</text>'
             ) if label else ""
             return f"""
             <g onclick="emitEvent('diagram_select', '{eid}')">
@@ -382,8 +437,8 @@ def page_integrated():
             <g class="svg-node" onclick="emitEvent('diagram_select', '{nid}')">
               {halo}
               <rect x="{x}" y="{y}" width="{w}" height="{h}" rx="9" fill="{fill}" stroke="{stroke}" stroke-width="{sw}" {dash}/>
-              <text x="{x + w/2}" y="{y + 22}" text-anchor="middle" font-size="11.5" font-weight="700" fill="{tcol}">{html.escape(title)}</text>
-              <text x="{x + w/2}" y="{y + 39}" text-anchor="middle" font-size="9.5" font-family="monospace" fill="#475569">{html.escape(sub)}</text>
+              <text x="{x + w/2}" y="{y + 22}" text-anchor="middle" font-size="11.5" font-weight="700" fill="{tcol}">{format_math_svg(title)}</text>
+              <text x="{x + w/2}" y="{y + 39}" text-anchor="middle" font-size="9.5" font-family="monospace" fill="#475569">{format_math_svg(sub)}</text>
               {badge_html}
             </g>"""
 
@@ -535,11 +590,11 @@ def page_integrated():
         svg_holder.set_content(build_svg())
         sel = state["selected_id"]
         meta = DIAGRAM_META.get(sel, DIAGRAM_META["node_m"])
-        lbl_ins_title.set_text(meta["title"])
+        lbl_ins_title.set_content(format_math_html(meta["title"]))
         lbl_ins_kind.set_text(meta["kind"])
-        lbl_ins_desc.set_text(meta["desc"])
-        lbl_ins_formula.set_text(meta["formula"])
-        lbl_ins_live.set_text(get_live_values_for(sel))
+        lbl_ins_desc.set_content(format_math_html(meta["desc"]))
+        lbl_ins_formula.set_content(format_math_html(meta["formula"]))
+        lbl_ins_live.set_content(format_math_html(get_live_values_for(sel)))
 
         # Status badge
         st = state["step_status"]
@@ -883,18 +938,18 @@ def page_integrated():
                     with ui.row().classes("w-full items-center justify-between border-b border-slate-100 pb-2"):
                         with ui.column().classes("gap-0"):
                             lbl_ins_kind = ui.label("Khối dữ liệu").classes("text-[10px] font-bold uppercase tracking-wider text-indigo-600")
-                            lbl_ins_title = ui.label("Bản rõ M").classes("text-sm font-bold text-slate-900")
+                            lbl_ins_title = ui.html("Bản rõ M", sanitize=False).classes("text-sm font-bold text-slate-900")
                         badge_ins_status = ui.badge("Sẵn sàng", color="indigo").classes("text-[10px]")
 
-                    lbl_ins_desc = ui.label("").classes("text-xs text-slate-600 leading-relaxed")
+                    lbl_ins_desc = ui.html("", sanitize=False).classes("text-xs text-slate-600 leading-relaxed")
 
                     with ui.card().classes("w-full p-2 bg-slate-50 border border-slate-200 rounded-lg"):
                         ui.label("Cơ chế / Công thức").classes("text-[10px] font-bold uppercase text-slate-400")
-                        lbl_ins_formula = ui.label("").classes("text-[11px] font-mono font-semibold text-indigo-700 break-all")
+                        lbl_ins_formula = ui.html("", sanitize=False).classes("text-[11px] font-mono font-semibold text-indigo-700 break-all")
 
                     with ui.card().classes("w-full p-2.5 bg-slate-900 text-slate-100 rounded-lg"):
                         ui.label("Dữ liệu thực tế (Live)").classes("text-[10px] font-bold uppercase text-emerald-400 mb-1")
-                        lbl_ins_live = ui.label("").classes("text-[11px] font-mono whitespace-pre-wrap break-all leading-relaxed")
+                        lbl_ins_live = ui.html("", sanitize=False).classes("text-[11px] font-mono whitespace-pre-wrap break-all leading-relaxed")
 
                 ui.label("Mẹo: Click trực tiếp lên bất kỳ mũi tên nào để xem dữ liệu truyền qua liên kết đó.").classes("text-[10px] text-slate-400 italic pt-2")
 
@@ -1041,8 +1096,8 @@ def page_algorithms():
             parts.append(
                 f'<g class="svg-node" onclick="emitEvent(\'alg_node_select\', \'{nid}\')">'
                 f'<rect x="{x}" y="22" width="150" height="72" rx="10" fill="{fill}" stroke="{stroke}" stroke-width="{sw}"/>'
-                f'<text x="{x + 75}" y="50" text-anchor="middle" font-size="12" font-weight="700" fill="{t_col}">{html.escape(title)}</text>'
-                f'<text x="{x + 75}" y="70" text-anchor="middle" font-size="10" fill="#475569">{html.escape(sub)}</text>'
+                f'<text x="{x + 75}" y="50" text-anchor="middle" font-size="12" font-weight="700" fill="{t_col}">{format_math_svg(title)}</text>'
+                f'<text x="{x + 75}" y="70" text-anchor="middle" font-size="10" fill="#475569">{format_math_svg(sub)}</text>'
                 f'</g>'
             )
         parts.append("</svg>")
@@ -1085,8 +1140,8 @@ def page_algorithms():
                 parts.append(
                     f'<g class="svg-node" onclick="emitEvent(\'alg_node_select\', \'{nid}\')">'
                     f'<rect x="{x}" y="{row_y}" width="150" height="64" rx="10" fill="{fill}" stroke="{stroke}" stroke-width="{sw}"/>'
-                    f'<text x="{x + 75}" y="{row_y + 27}" text-anchor="middle" font-size="12" font-weight="700" fill="#0f172a">{html.escape(title)}</text>'
-                    f'<text x="{x + 75}" y="{row_y + 46}" text-anchor="middle" font-size="10" fill="#475569">{html.escape(sub)}</text>'
+                    f'<text x="{x + 75}" y="{row_y + 27}" text-anchor="middle" font-size="12" font-weight="700" fill="#0f172a">{format_math_svg(title)}</text>'
+                    f'<text x="{x + 75}" y="{row_y + 46}" text-anchor="middle" font-size="10" fill="#475569">{format_math_svg(sub)}</text>'
                     f'</g>'
                 )
         parts.append("</svg>")
@@ -1118,14 +1173,14 @@ def page_algorithms():
         in_txt, proc_txt, out_txt = alg_data["stage_details"][sid]
         c1, c2, c3 = meta["col_titles"]
 
-        lbl_detail_title.set_text(f"Khối {meta['num']}: {meta['title']}")
-        lbl_detail_sub.set_text(meta["sub"])
-        lbl_col1_title.set_text(c1)
-        lbl_col2_title.set_text(c2)
-        lbl_col3_title.set_text(c3)
-        txt_col1.set_text(in_txt)
-        txt_col2.set_text(proc_txt)
-        txt_col3.set_text(out_txt)
+        lbl_detail_title.set_content(format_math_html(f"Khối {meta['num']}: {meta['title']}"))
+        lbl_detail_sub.set_content(format_math_html(meta["sub"]))
+        lbl_col1_title.set_content(format_math_html(c1))
+        lbl_col2_title.set_content(format_math_html(c2))
+        lbl_col3_title.set_content(format_math_html(c3))
+        txt_col1.set_content(format_math_html(in_txt))
+        txt_col2.set_content(format_math_html(proc_txt))
+        txt_col3.set_content(format_math_html(out_txt))
 
         # Update interactive SVG sub-diagram
         is_rsa = sid in (1, 3, 4)
@@ -1139,9 +1194,9 @@ def page_algorithms():
 
         sub_id = alg_data["active_subnode"]
         s_title, s_desc = SUBNODE_INFO.get(sub_id, ("—", ""))
-        lbl_subnode_name.set_text(s_title)
-        lbl_subnode_desc.set_text(s_desc)
-        lbl_subnode_live.set_text(get_subnode_live_value(sub_id))
+        lbl_subnode_name.set_content(format_math_html(s_title))
+        lbl_subnode_desc.set_content(format_math_html(s_desc))
+        lbl_subnode_live.set_content(format_math_html(get_subnode_live_value(sub_id)))
 
         # Live summary strip for AES-GCM stages
         if is_rsa:
@@ -1472,8 +1527,8 @@ def page_algorithms():
                     with ui.row().classes("items-center justify-between w-full"):
                         ui.label(meta["num"]).classes(f"w-5 h-5 rounded-full bg-{color}-600 text-white flex items-center justify-center text-[11px] font-bold")
                         stage_badges[sid] = ui.badge("Chờ", color="slate").classes("text-[10px]")
-                    ui.label(meta["title"]).classes("text-xs font-bold text-slate-800 mt-1.5 leading-tight")
-                    ui.label(meta["sub"]).classes("text-[10px] text-slate-500 truncate w-full")
+                    ui.html(format_math_html(meta["title"]), sanitize=False).classes("text-xs font-bold text-slate-800 mt-1.5 leading-tight")
+                    ui.html(format_math_html(meta["sub"]), sanitize=False).classes("text-[10px] text-slate-500 truncate w-full")
                     btn = ui.button("▶ Chạy", on_click=STAGE_RUNNERS[sid]).props("flat dense").classes(f"text-[11px] font-semibold text-{color}-700 mt-1 px-1.5 py-0.5 rounded bg-{color}-50 hover:bg-{color}-100")
                     btn.on("click.stop", lambda: None)
 
@@ -1481,8 +1536,8 @@ def page_algorithms():
         with ui.card().classes("w-full p-4 bg-white rounded-xl shadow-sm border border-slate-200 gap-3"):
             with ui.row().classes("items-center justify-between w-full pb-2 border-b border-slate-100 flex-wrap gap-2"):
                 with ui.column().classes("gap-0"):
-                    lbl_detail_title = ui.label("Khối 1: Sinh khóa RSA-512").classes("text-sm font-bold text-slate-800")
-                    lbl_detail_sub = ui.label("Bob • p, q, n, e, d").classes("text-xs text-slate-500")
+                    lbl_detail_title = ui.html("Khối 1: Sinh khóa RSA-512", sanitize=False).classes("text-sm font-bold text-slate-800")
+                    lbl_detail_sub = ui.html("Bob • p, q, n, e, d", sanitize=False).classes("text-xs text-slate-500")
                 ui.button("▶ Chạy khối đang xem", on_click=lambda: STAGE_RUNNERS[alg_data["active_stage"]]()).classes("bg-indigo-600 text-white text-xs font-semibold px-3 py-1 rounded-lg")
 
             # Interactive SVG Sub-Diagram + 1-sentence Inspector
@@ -1492,9 +1547,9 @@ def page_algorithms():
 
                 with ui.row().classes("w-full items-center justify-between bg-white/95 rounded-lg border border-slate-200 px-3 py-2 gap-3 flex-wrap"):
                     with ui.column().classes("gap-0.5 flex-1 min-w-[260px]"):
-                        lbl_subnode_name = ui.label("—").classes("text-xs font-bold text-indigo-700")
-                        lbl_subnode_desc = ui.label("—").classes("text-xs text-slate-600")
-                    lbl_subnode_live = ui.label("—").classes("text-[11px] font-mono text-slate-800 bg-slate-100 px-2.5 py-1 rounded border border-slate-200 break-all max-w-full")
+                        lbl_subnode_name = ui.html("—", sanitize=False).classes("text-xs font-bold text-indigo-700")
+                        lbl_subnode_desc = ui.html("—", sanitize=False).classes("text-xs text-slate-600")
+                    lbl_subnode_live = ui.html("—", sanitize=False).classes("text-[11px] font-mono text-slate-800 bg-slate-100 px-2.5 py-1 rounded border border-slate-200 break-all max-w-full")
 
                 live_aes_strip = ui.row().classes("w-full gap-2 flex-wrap pt-1")
                 with live_aes_strip:
@@ -1502,7 +1557,7 @@ def page_algorithms():
                         ("K:", "k"), ("IV:", "iv"), ("C_data:", "c"), ("Tag:", "tag"), ("M':", "m_out")
                     ]:
                         with ui.row().classes("items-center gap-1 bg-white px-2 py-1 rounded border border-slate-200"):
-                            ui.label(lbl_name).classes("text-[10px] font-bold text-slate-500")
+                            ui.html(format_math_html(lbl_name), sanitize=False).classes("text-[10px] font-bold text-slate-500")
                             lbl_val = ui.label("—").classes("text-[10px] font-mono text-slate-800 break-all")
                             if ref_holder == "k":
                                 lbl_live_k = lbl_val
@@ -1518,14 +1573,14 @@ def page_algorithms():
             # Compact 3-Column Inspector (Input | Arithmetic/Crypto Process | Output)
             with ui.grid(columns=3).classes("w-full gap-3 items-stretch"):
                 with ui.card().classes("p-3 bg-slate-50 rounded-lg border border-slate-200"):
-                    lbl_col1_title = ui.label("INPUT").classes("text-[11px] font-bold text-slate-600 uppercase border-b pb-1")
-                    txt_col1 = ui.label("").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap break-all mt-2 max-h-48 overflow-y-auto")
+                    lbl_col1_title = ui.html("INPUT", sanitize=False).classes("text-[11px] font-bold text-slate-600 uppercase border-b pb-1")
+                    txt_col1 = ui.html("", sanitize=False).classes("text-xs font-mono text-slate-700 whitespace-pre-wrap break-all mt-2 max-h-48 overflow-y-auto")
                 with ui.card().classes("p-3 bg-indigo-50/40 rounded-lg border border-indigo-200"):
-                    lbl_col2_title = ui.label("XỬ LÝ").classes("text-[11px] font-bold text-indigo-800 uppercase border-b border-indigo-200 pb-1")
-                    txt_col2 = ui.label("").classes("text-xs font-mono text-slate-700 whitespace-pre-wrap break-all mt-2 max-h-48 overflow-y-auto")
+                    lbl_col2_title = ui.html("XỬ LÝ", sanitize=False).classes("text-[11px] font-bold text-indigo-800 uppercase border-b border-indigo-200 pb-1")
+                    txt_col2 = ui.html("", sanitize=False).classes("text-xs font-mono text-slate-700 whitespace-pre-wrap break-all mt-2 max-h-48 overflow-y-auto")
                 with ui.card().classes("p-3 bg-emerald-50/40 rounded-lg border border-emerald-200"):
-                    lbl_col3_title = ui.label("OUTPUT").classes("text-[11px] font-bold text-emerald-800 uppercase border-b border-emerald-200 pb-1")
-                    txt_col3 = ui.label("").classes("text-xs font-mono text-slate-800 whitespace-pre-wrap break-all mt-2 max-h-48 overflow-y-auto")
+                    lbl_col3_title = ui.html("OUTPUT", sanitize=False).classes("text-[11px] font-bold text-emerald-800 uppercase border-b border-emerald-200 pb-1")
+                    txt_col3 = ui.html("", sanitize=False).classes("text-xs font-mono text-slate-800 whitespace-pre-wrap break-all mt-2 max-h-48 overflow-y-auto")
 
     execute_rsa_keygen(silent=True)
 
